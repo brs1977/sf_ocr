@@ -1,3 +1,5 @@
+#!/bin/bash
+
 sudo apt-get install tesseract-ocr-rus
 sudo apt-get install python3-pip
 sudo apt-get update
@@ -8,7 +10,7 @@ sudo apt-get install python3-dev
 pip3 install virtualenv
 
 python3 -m venv venv
-source venv\bin\activate
+source venv/bin/activate
 
 pip3 install --upgrade pip
 pip3 install wheel
