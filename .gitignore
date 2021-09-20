@@ -1,0 +1,14 @@
+/.vscode
+/__pycache__
+/build
+/dist
+/input
+/logs
+/models
+/models_old
+/ocr
+/ocr.c
+/ocr.pyx
+/ocr.spec
+/output
+/venv

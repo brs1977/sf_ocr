@@ -1,0 +1,8 @@
+opencv-python
+scikit-learn=0.22.2.post1
+scikit-image
+sklearn
+pytesseract
+loguru
+PyMuPDF
+pyyaml
