@@ -6,3 +6,4 @@ pytesseract
 loguru
 PyMuPDF
 pyyaml
+gdown
