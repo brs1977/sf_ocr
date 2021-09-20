@@ -23,7 +23,7 @@ pip3 install -r requirements.txt
 # cython ocr.pyx --embed
 # gcc -Os -I /usr/include/python3.6 -o ocr ocr.c -lpython3.6 -lpthread -lm -lutil -ldl
 
-pip3 install pyinstaller
+install pyinstaller
 pyinstaller ocr.py --onefile
 
 
