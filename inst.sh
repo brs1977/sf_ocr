@@ -5,10 +5,7 @@ sudo apt-get install -y python3-opencv
 sudo apt-get install python-dev
 sudo apt-get install python3-dev
 
-pip install virtualenv
-
-md sf_ocr
-cd sf_ocr
+pip3 install virtualenv
 
 python3 -m venv venv
 source venv\bin\activate
@@ -26,3 +23,10 @@ pip3 install -r requirements.txt
 
 pip3 install pyinstaller
 pyinstaller ocr.py --onefile
+
+
+mkdir dist/models
+
+cp config.yaml dist/models
+gdown --id 1-172My1T8VvCSPCc4eHcJZXkZvuXlo9V -O dist/models
+gdown --id 10scZJVWomVktMUdjd1QIlwxd1kXclmwT -O dist/models
