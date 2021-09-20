@@ -30,5 +30,5 @@ pyinstaller ocr.py --onefile
 mkdir dist/models
 
 cp config.yaml dist/models
-gdown --id 1-172My1T8VvCSPCc4eHcJZXkZvuXlo9V -O dist/models
-gdown --id 10scZJVWomVktMUdjd1QIlwxd1kXclmwT -O dist/models
+gdown --id 1-172My1T8VvCSPCc4eHcJZXkZvuXlo9V -O dist/models/type.pkl
+gdown --id 10scZJVWomVktMUdjd1QIlwxd1kXclmwT -O dist/models/orient.pkl
