@@ -9,4 +9,4 @@ loguru
 PyMuPDF
 pyyaml
 pyinstaller
-#gdown
+gdown
