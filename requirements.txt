@@ -6,4 +6,7 @@ pytesseract
 loguru
 PyMuPDF
 pyyaml
-gdown
+pyinstaller
+#cython
+numpy
+#gdown
