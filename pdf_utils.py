@@ -16,8 +16,9 @@ from img_utils import *
 def img_page_pdf_gen(file_name):  
   pdf_file = fitz.open(file_name)
     
+  pages = len(pdf_file)
   # iterate over PDF pages
-  for page_index in range(len(pdf_file)):          
+  for page_index in range(pages):          
     # get the page itself
     page = pdf_file[page_index]
     
@@ -39,8 +40,8 @@ def img_page_pdf_gen(file_name):
       # print(img.shape)
       # cv2_imshow(img)
 
-      logger.info(f"{{'page':{page_index+1}, 'pages':{len(pdf_file)}}}")
-      yield img
+      # logger.info(f"{{'page':{page_index+1}, 'pages':{len(pdf_file)}}}")
+      yield img, page_index+1, pages
   
 
 def create_image_page(pdf_new, img):
@@ -60,7 +61,7 @@ def split_pdf(pdf_file, orient_clf, type_clf, extractor, path='output'):
   imgs = []
   is_first = True
   n = 1
-  for img in img_page_pdf_gen(pdf_file):
+  for img, page, pages in img_page_pdf_gen(pdf_file):
     gray = to_gray(img)
     h,w = gray.shape
     angle = 0
@@ -130,3 +131,52 @@ def create_pdf_file(imgs, path, extractor):
 
   with open(file_name + '.json', 'w') as f:
     json.dump(info, f)
+
+def split_pdf_gen(pdf_file, orient_clf, type_clf, extractor):
+  imgs = []
+  is_first = True
+  n = 1
+  for img, page, pages in img_page_pdf_gen(pdf_file):
+    gray = to_gray(img)
+    h,w = gray.shape
+    angle = 0
+    # set landsape
+    if h > w:
+      gray = np.rot90(gray, 1)
+      angle = 90
+
+    gray = resize(gray, 140,100)    
+    orient = orient_clf.predict([gray])[0]
+
+    if orient == 1:
+      angle -= 180
+      gray = np.rot90(gray, 2)
+
+    typ = type_clf.predict([gray])[0]
+
+    img = np.rot90(img,angle//90)    
+    if typ == 1 and not is_first:
+      info, pdf = process_images(imgs, extractor)
+      yield page,pages,info,pdf
+      n += 1
+      imgs = []
+
+    _, img = correct_skew3(img)
+    imgs.append(img)
+    is_first = False  
+
+  info, pdf = process_images(imgs, extractor)
+  yield page,pages,info,pdf
+
+def process_images(imgs, extractor):
+  info = extractor.process(imgs[0])
+  # logger.debug(text)
+  logger.debug(info)
+
+
+  pdf_new = fitz.open()
+
+  for img in imgs:
+    create_image_page(pdf_new, img)  
+
+  return info, pdf_new

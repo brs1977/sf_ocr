@@ -8,5 +8,9 @@ pytesseract
 loguru
 PyMuPDF
 pyyaml
-pyinstaller
+# pyinstaller
 gdown
+aiofiles
+fastapi
+requests
+python-multipart
