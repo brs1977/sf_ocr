@@ -14,3 +14,4 @@ aiofiles
 fastapi
 requests
 python-multipart
+# uvicorn

@@ -6,10 +6,15 @@ COPY requirements.txt /tmp
 WORKDIR /tmp
 RUN pip3 install -r requirements.txt 
 
-RUN mkdir /usr/src/app/output
-COPY models /usr/src/app
-COPY *.py /usr/src/app/
 WORKDIR /usr/src/app
 
+RUN mkdir /usr/src/app/output
+RUN mkdir /usr/src/app/models
+
+COPY models/*.pkl /usr/src/app/models/
+COPY config.yaml /usr/src/app/models
+COPY *.py /usr/src/app/
+
+
 # ENTRYPOINT ["unicorn"]   
-CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9090"]
+CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9095"]
