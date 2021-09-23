@@ -17,4 +17,4 @@ COPY *.py /usr/src/app/
 
 
 # ENTRYPOINT ["unicorn"]   
-CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9090"]
+CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9095"]
