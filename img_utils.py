@@ -11,6 +11,8 @@ import pytesseract as pytesseract
 import numpy as np
 # from google.colab.patches import cv2_imshow
 import functools
+from skimage.util import img_as_float, img_as_ubyte
+from skimage.morphology import skeletonize
 
 def resize(img, x,y):
   if img.shape[0]>img.shape[1]:
@@ -131,4 +133,67 @@ def ocr_rus(img, lang='rus', config='--oem 1 --psm 4'):
   return text
 
 
+def rotation(img,angle,background=(255,255,255)):
+  old_width, old_height = img.shape[:2]
+  
+  angle_radian = math.radians(angle)
+  width = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
+  height = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
 
+  image_center = (old_height/2, old_width/2)
+  rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+  rot_mat[1, 2] += (width - old_width) / 2
+  rot_mat[0, 2] += (height - old_height) / 2
+  return rot_mat,cv2.warpAffine(img, rot_mat, (int(round(height)), int(round(width))), borderValue=background)  
+
+
+
+def point_rotation(points,rot_mat):
+  points = np.array(points)
+  # add ones
+  ones = np.ones(shape=(len(points), 1))
+
+  points_ones = np.hstack([points, ones])
+
+  # transform points
+  transformed_points = rot_mat.dot(points_ones.T).T
+
+  return np.asarray(transformed_points, dtype=np.uint16)
+
+def table_roi(mask):
+  contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+  contour_areas = list(map(cv2.contourArea, contours))
+  largest_contour_idx = np.argmax(list(contour_areas))
+  contour = contours[largest_contour_idx]
+  # Contour Approximation # меньше epsilon более точно повторяется контур
+  epsilon = 0.09*cv2.arcLength(contour,True)
+  approx = cv2.approxPolyDP(contour,epsilon,True)
+  x,y,w,h = cv2.boundingRect(approx)
+  return x,y,w,h
+
+def calculate_angle(boxes):
+  img_edges = img_as_ubyte(skeletonize(img_as_float(boxes)))
+  lines = cv2.HoughLinesP(img_edges, rho=1, theta=np.pi / 180.0, threshold=160, minLineLength=150, maxLineGap=10)
+  # lines = cv2.HoughLinesP(img_edges, 1, 1 / 180.0, 100, minLineLength=100, maxLineGap=10)
+
+  angles = []
+
+  try:
+      for line in lines:
+          x1, y1, x2, y2 = line[0]
+          angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
+          if angle != 0 and angle != -90:
+              if angle > 30:
+                  angle = 90 - angle
+              if angle < -30:
+                  angle = angle + 90
+              angles.append(angle)
+
+      if len(angles) != 0:
+          skew_angle = np.mean(angles)
+      else:
+          skew_angle = 0
+  except:
+      skew_angle = 0
+
+  return skew_angle

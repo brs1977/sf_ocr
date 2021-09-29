@@ -126,9 +126,7 @@ class SfInfoExtractor:
     return inn_kpp_data[0]
 
   def process(self, img):    
-    gray = to_gray(img)
-    _, gray = correct_skew3(gray)
-    text = self.text_from_img(gray)    
+    text = self.text_from_img(img)    
     text = text.split('\n')
     info = self.sf_info_from_img_text(text)        
     logger.debug('\n'.join([x for x in text if x.strip()]))
@@ -180,7 +178,23 @@ class SfInfoExtractor:
     return img
 
   def get_head_img(self, img):
-    return img[0:round(img.shape[0]/2.5),0:img.shape[1]]  
+    gray =preprocess_image(img, method=4, kernel_size=3)
+    bw = to_binary(gray)
+    hor_min_size = bw.shape[1] // 20
+    ver_min_size =  bw.shape[0] // 15 
+    horizontal = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (hor_min_size, 1)) )
+    vertical   = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_min_size)) )
+
+    mask = horizontal+vertical
+    x,y,w,h = table_roi(mask)  
+    roi = mask[y:y+h, x:x+w]
+    angle = calculate_angle(mask)
+    rm,img = rotation(img,angle)  
+    if y < img.shape[0]//10:
+      y = img.shape[0] // 4
+    return img[0:y,0:img.shape[1]]
+
+
 
   def text_from_img(self, img):
       # заголовок страницы с инфо по с/ф
