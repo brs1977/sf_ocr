@@ -188,8 +188,16 @@ class SfInfoExtractor:
     mask = horizontal+vertical
     x,y,w,h = table_roi(mask)  
     roi = mask[y:y+h, x:x+w]
-    angle = calculate_angle(mask)
-    rm,img = rotation(img,angle)  
+    angle = calculate_angle(roi)
+    # rm,img = rotation(img,angle)
+
+    # убираем гор линии по маске
+    gray = to_gray(img)
+    mask = cv2.dilate(mask, (3,3), iterations=3)
+    gray = cv2.addWeighted(gray, 1, mask, 1, 0.0)
+    rm,img = rotation(gray,angle)  
+
+
     if y < img.shape[0]//10:
       y = img.shape[0] // 4
     return img[0:y,0:img.shape[1]]
