@@ -14,4 +14,6 @@ aiofiles
 fastapi
 requests
 python-multipart
+pybind11
+fastwer
 # uvicorn
