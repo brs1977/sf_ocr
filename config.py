@@ -6,6 +6,7 @@ class Config:
     with open(file_name, "r") as f:
       data = yaml.safe_load(f)    
 
+    self.PATTERN_BILL = re.compile(data['bill_template'])    
     self.PATTERN_TN = re.compile('|'.join(data['tn_template']))
 
     self.PATTERN_SF_NUM = re.compile(r'.*?('+'|'.join(data['sf_num_template'])+')(.*)')
