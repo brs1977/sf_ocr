@@ -243,7 +243,7 @@ class SfInfoExtractor:
     # cv2_imshow(head_img)
 
     # ocr
-    return ocr_rus(head_img, config='--oem 1 -- psm 11')
+    return ocr_rus(head_img, config='--oem 1 --psm 11')
 
 # class SfInfoExtractor:
 #   def __init__(self, config):
