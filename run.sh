@@ -5,4 +5,4 @@ app="www_ocr"
 
 # docker build -t ${app} .
 
-docker run -d -p 9095:9095 ${app} 
+docker run -d -p 9095:9095 ${app} --name ${app} --rm

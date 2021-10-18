@@ -27,8 +27,7 @@ INDEX_PATTERN = re.compile('_(\d*)')
 def del_state(id):
     os.remove(os.path.join(app.file_path,f'{id}.pkl'))
 
-def set_state(id, page, pages, url = None):
-    state = {'page':page, 'pages': pages, 'url': url}
+def set_state(id, state):
     with open(os.path.join(app.file_path,f'{id}.pkl'), 'wb') as f:   
         pickle.dump(state, f)
 
@@ -73,6 +72,7 @@ def get_file_name(fn, files):
 
 async def do_work(id):    
     files = {}
+    results = []
     pdf_file_name = os.path.join(app.file_path,f'{id}.pdf')
     zip_file_name = os.path.join(app.file_path,f'{id}.zip')
     with BytesIO() as archive:
@@ -89,18 +89,19 @@ async def do_work(id):
                 with zip_archive.open(file_name+'.json', 'w') as json_file:
                     json_file.write(bytes(json.dumps(info),'utf-8'))
                     # json.dump(info, json_file)
-
-                set_state(id,page,pages)
+                res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
+                results.append(res)
+                set_state(id,{'page':page,'pages':pages})
 
         with open(zip_file_name, 'wb') as f:
             f.write(archive.getbuffer())
 
-        set_state(id,page,pages,f'result/{id}.zip')
+        set_state(id,{'page':page,'pages':pages,'url':f'result/{id}.zip', 'results':results})
 
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):    
     id = str(uuid.uuid4())
-    set_state(id=id,page=0,pages=0)
+    set_state(id,{'page':0,'pages':0})
 
     out_file_name = f"output/{id}.pdf"
     async with aiofiles.open(out_file_name, 'wb') as out_file:
