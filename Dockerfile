@@ -14,7 +14,7 @@ RUN mkdir /usr/src/app/models
 # COPY models/*.pkl /usr/src/app/models/
 
 RUN gdown --id 1-172My1T8VvCSPCc4eHcJZXkZvuXlo9V -O models/type.pkl \
-    s&& gdown --id 10scZJVWomVktMUdjd1QIlwxd1kXclmwT -O models/orient.pkl
+    && gdown --id 10scZJVWomVktMUdjd1QIlwxd1kXclmwT -O models/orient.pkl
 
 
 COPY config.yaml /usr/src/app/models
@@ -22,4 +22,4 @@ COPY *.py /usr/src/app/
 
 
 # ENTRYPOINT ["unicorn"]   
-CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9095"]
+CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9095", "--workers", "3"]
