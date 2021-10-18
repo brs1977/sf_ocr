@@ -11,10 +11,12 @@ if sys.version_info[:2] >= (3, 7):
 else:
     from asyncio import _get_running_loop as get_running_loop
 from fastapi.responses import FileResponse
-from fastapi import Request, FastAPI, File, UploadFile, HTTPException  
+from fastapi import Request, FastAPI, File, UploadFile, HTTPException, BackgroundTasks  
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import concurrent.futures
 import aiofiles
 import pickle
 import json
@@ -90,7 +92,7 @@ def get_file_name(fn, files):
     return fn
 
 
-async def do_work(id):    
+def do_work(id):    
     files = {}
     results = []
     pdf_file_name = os.path.join(app.file_path,f'{id}.pdf')
@@ -112,18 +114,19 @@ async def do_work(id):
                 res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
                 results.append(res)
                 state = {'page':page,'pages':pages}
-                logger.debug(state)
+                # logger.debug(state)
                 set_state(id,state)
 
         with open(zip_file_name, 'wb') as f:
             f.write(archive.getbuffer())
 
         state = {'page':page,'pages':pages,'url':f'result/{id}.zip', 'results':results}
-        logger.debug(state)
+        # logger.debug(state)
         set_state(id,state)
 
+
 @app.post("/ocr")
-async def ocr(file: UploadFile = File(...)):    
+async def ocr(background_tasks :BackgroundTasks, file: UploadFile = File(...) ):    
     id = str(uuid.uuid4())
     set_state(id,{'page':0,'pages':0})
 
@@ -132,8 +135,21 @@ async def ocr(file: UploadFile = File(...)):
         content = await file.read()  # async read
         await out_file.write(content)  # async write
     
-    asyncio.run_coroutine_threadsafe(do_work(id), loop=get_running_loop())
+    # do_work(id)
+    # background_tasks.add_task(do_work, id)
+    # loop=get_running_loop()
+    # asyncio.run_coroutine_threadsafe(do_work(id), loop=loop)
 
+    # loop = get_running_loop()
+    # with concurrent.futures.ProcessPoolExecutor() as pool:
+    #     result = await loop.run_in_executor(
+    #         pool, do_work, id)
+
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    #     executor.submit(do_work,id)
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(do_work,id)
     return JSONResponse({"id": id})
 
 
