@@ -4,6 +4,8 @@ from io import BytesIO
 import os
 import sys
 
+from loguru import logger
+
 if sys.version_info[:2] >= (3, 7):
     from asyncio import get_running_loop
 else:
@@ -38,6 +40,24 @@ def get_state(id):
     except:
         raise HTTPException(status_code=404)
     return state
+
+# async def set_state(id, state):
+#     async with aiofiles.open(os.path.join(app.file_path,f'{id}.pkl'), 'wb') as f:
+#         f.write(str(state))
+#         # pickle.dump(state, f)
+
+# async def get_state(id):
+#     try:
+#         async with aiofiles.open(os.path.join(app.file_path,f'{id}.pkl'), 'rb') as f:
+#             state = await f.readlines()  # pickle.load(f)
+#             state = json.loads(state[0])
+#             print(id,state)
+#     except Exception as e:
+#         logger.error(e)
+#         raise HTTPException(status_code=404)
+#     return state
+
+
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -91,7 +111,7 @@ async def do_work(id):
                     # json.dump(info, json_file)
                 res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
                 results.append(res)
-                set_state(id,{'page':page,'pages':pages})
+                await set_state(id,{'page':page,'pages':pages})
 
         with open(zip_file_name, 'wb') as f:
             f.write(archive.getbuffer())
@@ -114,12 +134,12 @@ async def ocr(file: UploadFile = File(...)):
 
 
 @app.get('/progress/{id}')
-async def status(id):
+def status(id):
     state = get_state(id)
     return JSONResponse(state)
 
 @app.get('/result/{id}')
-async def status(id):
+def status(id):
     state = get_state(id)
     if state['page']!=0 and state['page']!=state['pages']:
         raise HTTPException(status_code=404)
