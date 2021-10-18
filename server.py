@@ -111,12 +111,16 @@ async def do_work(id):
                     # json.dump(info, json_file)
                 res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
                 results.append(res)
-                await set_state(id,{'page':page,'pages':pages})
+                state = {'page':page,'pages':pages}
+                logger.debug(state)
+                set_state(id,state)
 
         with open(zip_file_name, 'wb') as f:
             f.write(archive.getbuffer())
 
-        set_state(id,{'page':page,'pages':pages,'url':f'result/{id}.zip', 'results':results})
+        state = {'page':page,'pages':pages,'url':f'result/{id}.zip', 'results':results}
+        logger.debug(state)
+        set_state(id,state)
 
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):    
