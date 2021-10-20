@@ -9,6 +9,7 @@ loguru
 PyMuPDF
 pyyaml
 # pyinstaller
+# pysqlite3
 gdown
 aiofiles
 fastapi

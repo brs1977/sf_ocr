@@ -9,7 +9,7 @@ client = TestClient(app)
 
 
 def test_read_main():        
-    filename = '/home/ruslan/prj/sf_ocr/input/kTo84xXwdKk0qzkYnx8Ic09qWZELRS.pdf'
+    filename = '/home/ruslan/prj/sf_ocr/input/256277.pdf'
     # print(filename)
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}

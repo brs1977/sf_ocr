@@ -180,7 +180,7 @@ class SfInfoExtractor:
       logger.debug(info)
       return info
     except Exception as e:
-      logger.error(e)
+      logger.exception(e)
 
   def head_roi(self, img):
     gray =preprocess_image(img, method=4, kernel_size=3)

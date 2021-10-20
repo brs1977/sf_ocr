@@ -1,6 +1,7 @@
 /.vscode
 /__pycache__
 /build
+/public
 /dist
 /input
 /logs
@@ -12,3 +13,6 @@
 /ocr.spec
 /output
 /venv
+test.py
+server1.py
+server2.py

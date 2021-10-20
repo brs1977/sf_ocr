@@ -1,6 +1,8 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
 RUN apt-get update -y   
-RUN apt-get install -y python3-pip python3-dev build-essential libgl1-mesa-dev tesseract-ocr-rus
+RUN apt-get install -y python3-pip python3-dev build-essential libgl1-mesa-dev tesseract-ocr-rus 
+
+#libsqlite3-dev
 
 COPY requirements.txt /tmp
 WORKDIR /tmp
