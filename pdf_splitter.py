@@ -12,6 +12,9 @@ from img_utils import *
 
 INDEX_PATTERN = re.compile('_(\d*)')
 
+def gen_temp_name():
+  return next(tempfile._get_candidate_names())  
+ 
 class PDFSplitter:  
   def __init__(self,out_file_name, pdf_file,orient_clf, type_clf, extractor):
     self.files = {}
@@ -106,39 +109,51 @@ class PDFSplitter:
 
     info = self.extractor.process(imgs[0])
     # logger.debug(text)
-    logger.debug(info)
-    file_name = self._get_file_name(info['sf_no'])
+    # logger.debug(info)
 
-    with open(os.path.join(tmp_dir,file_name+'.json'), 'w') as json_file:
-      json_file.write(json.dumps(info))
+    file_name = gen_temp_name() # self._get_file_name(info['sf_no'])
 
-    with fitz.open() as pdf_new:
-      for img in imgs:
-        self.pdf_image_page(pdf_new, img)  
-      pdf_new.save(os.path.join(tmp_dir,file_name+'.pdf'),  garbage=4, deflate=True)
+    # with open(os.path.join(tmp_dir,file_name+'.json'), 'w') as json_file:
+    #   json_file.write(json.dumps(info))
 
-    return info, file_name
+    files = []
+    for i,img in enumerate(imgs):      
+      with fitz.open() as pdf_new:
+          self.pdf_image_page(pdf_new, img)  
+          fn = f'{file_name}-{i+1}.pdf'
+          files.append(fn)
+          pdf_new.save(os.path.join(tmp_dir,fn),  garbage=4, deflate=True)
+
+    info['files'] = files
+    return info
       
 
   def process(self):
     with tempfile.TemporaryDirectory() as tmp_dir:     
+      results = []
       imgs = []
       is_first = True
       for image, page, pages in self.pdf_images_gen(self.pdf_file):
         typ, img = self.preprocess_image(image)
 
         if typ == 1 and not is_first:
-          info, file_name = self.save_data(tmp_dir, imgs)
+          info = self.save_data(tmp_dir, imgs)
+          results.append(info)
           imgs = []
-          yield page,pages,info, file_name
+          yield page,pages,info
 
         imgs.append(img)
         is_first = False  
           
-      info, file_name = self.save_data(tmp_dir, imgs)
+      info = self.save_data(tmp_dir, imgs)
+      results.append(info)
+      
+      with open(os.path.join(tmp_dir,'results.json'), 'w') as json_file:
+        json_file.write(json.dumps(results))
 
       #zip 
       shutil.make_archive(self.out_file_name, 'zip', tmp_dir)      
 
-      yield page,pages,info, file_name
+      yield page,pages,info
 
+ 

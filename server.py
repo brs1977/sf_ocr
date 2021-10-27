@@ -90,10 +90,8 @@ def do_work(id):
         zip_file_name = os.path.join(app.file_path,f'{id}')
         
         splitter = PDFSplitter(zip_file_name,pdf_file_name,app.orient_clf,app.type_clf,app.extractor)
-        for page,pages,info,file_name in splitter.process():
-            res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
-            results.append(res)
-            
+        for page,pages,info in splitter.process():
+            results.append(info)            
             state = {'page':page,'pages':pages}
             set_state(id,state)
 
