@@ -16,3 +16,5 @@
 test.py
 server1.py
 server2.py
+server_mem_prof.py
+/tesseract

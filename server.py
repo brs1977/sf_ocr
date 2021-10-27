@@ -9,6 +9,8 @@ import sys
 from threading import Lock
 from loguru import logger
 
+from pdf_splitter import PDFSplitter
+
 if sys.version_info[:2] >= (3, 7):
     from asyncio import get_running_loop
 else:
@@ -25,10 +27,9 @@ import json
 from config import Config
 from extractor import SfInfoExtractor
 from hog_classifier import load_model
-from pdf_utils import split_pdf_gen
 import re
 from pydantic import BaseModel, Field
-# from db import *
+from pdf_splitter import PDFSplitter
 
 INDEX_PATTERN = re.compile('_(\d*)')
 
@@ -39,8 +40,11 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.file_path = 'output'
 config = Config('models/config.yaml')
 app.extractor = SfInfoExtractor(config)
-app.orient_clf = load_model('models/orient.pkl')
-app.type_clf = load_model('models/type.pkl')    
+# app.orient_clf = load_model('models/orient.pkl')
+# app.type_clf = load_model('models/type.pkl')    
+
+app.orient_clf = load_model('models/orient998.pkl')
+app.type_clf = load_model('models/type981.pkl')    
 
 app.lock = Lock()
 
@@ -79,34 +83,20 @@ def get_file_name(fn, files):
     return fn
 
 
-def do_work(id):   
-    try: 
-        files = {}
+def do_work(id):
+    try:
         results = []
         pdf_file_name = os.path.join(app.file_path,f'{id}.pdf')
-        zip_file_name = os.path.join(app.file_path,f'{id}.zip')
-        with BytesIO() as archive:
-            with ZipFile(archive, 'w') as zip_archive:
+        zip_file_name = os.path.join(app.file_path,f'{id}')
+        
+        splitter = PDFSplitter(zip_file_name,pdf_file_name,app.orient_clf,app.type_clf,app.extractor)
+        for page,pages,info,file_name in splitter.process():
+            res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
+            results.append(res)
+            
+            state = {'page':page,'pages':pages}
+            set_state(id,state)
 
-                for page,pages,info,pdf in split_pdf_gen(pdf_file_name,app.orient_clf,app.type_clf,app.extractor):
-                    file_name = get_file_name(info['sf_no'], files)
-                    files[file_name] = file_name
-
-                    with zip_archive.open(file_name+'.pdf', 'w') as pdf_file:                    
-                        pdf_file.write(pdf.tobytes(garbage=4, deflate=True))
-
-                    
-                    with zip_archive.open(file_name+'.json', 'w') as json_file:
-                        json_file.write(bytes(json.dumps(info),'utf-8'))
-                        # json.dump(info, json_file)
-                    res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
-                    results.append(res)
-                    
-                    state = {'page':page,'pages':pages}
-                    set_state(id,state)
-
-            with open(zip_file_name, 'wb') as f:
-                f.write(archive.getbuffer())
         state['results'] = results
         state['url'] = f'result/{id}.zip'
         
@@ -114,6 +104,43 @@ def do_work(id):
         logger.exception(e)
         state = {'detail':str(e)}
     return state
+
+
+# def do_work(id):   
+#     try: 
+#         files = {}
+#         results = []
+#         pdf_file_name = os.path.join(app.file_path,f'{id}.pdf')
+#         zip_file_name = os.path.join(app.file_path,f'{id}.zip')
+#         with BytesIO() as archive:
+#             with ZipFile(archive, 'w') as zip_archive:
+
+#                 for page,pages,info,pdf in split_pdf_gen(pdf_file_name,app.orient_clf,app.type_clf,app.extractor):
+#                     file_name = get_file_name(info['sf_no'], files)
+#                     files[file_name] = file_name
+
+#                     with zip_archive.open(file_name+'.pdf', 'w') as pdf_file:                    
+#                         pdf_file.write(pdf.tobytes(garbage=4, deflate=True))
+
+                    
+#                     with zip_archive.open(file_name+'.json', 'w') as json_file:
+#                         json_file.write(bytes(json.dumps(info),'utf-8'))
+#                         # json.dump(info, json_file)
+#                     res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
+#                     results.append(res)
+                    
+#                     state = {'page':page,'pages':pages}
+#                     set_state(id,state)
+
+#             with open(zip_file_name, 'wb') as f:
+#                 f.write(archive.getbuffer())
+#         state['results'] = results
+#         state['url'] = f'result/{id}.zip'
+        
+#     except Exception as e:
+#         logger.exception(e)
+#         state = {'detail':str(e)}
+#     return state
 
     
 
@@ -172,7 +199,7 @@ def result(id):
 
 @app.on_event("startup")
 async def startup_event():
-    app.state.executor = ProcessPoolExecutor() #max_workers=1)
+    app.state.executor = ProcessPoolExecutor(max_workers=1)
 
 
 @app.on_event("shutdown")

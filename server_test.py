@@ -2,9 +2,10 @@ import os
 import json
 import time
 from fastapi.testclient import TestClient
-from server import app
+from server_mem_prof import app
+from concurrent.futures.process import ProcessPoolExecutor
 
-
+app.state.executor = ProcessPoolExecutor() 
 client = TestClient(app)
 
 

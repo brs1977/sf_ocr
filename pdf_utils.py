@@ -14,35 +14,33 @@ from img_utils import *
 
 
 def img_page_pdf_gen(file_name):  
-  pdf_file = fitz.open(file_name)
-    
-  pages = len(pdf_file)
-  # iterate over PDF pages
-  for page_index in range(pages):          
-    # get the page itself
-    page = pdf_file[page_index]
-    
-    image_list = page.getImageList()
-
-    for image_index, img in enumerate(page.getImageList(), start=1):
-        
-      # get the XREF of the image
-      xref = img[0]
-        
-      # extract the image bytes
-      base_image = pdf_file.extractImage(xref)
-      image_bytes = base_image["image"]
+  with fitz.open(file_name) as pdf_file:      
+    pages = len(pdf_file)
+    # iterate over PDF pages
+    for page_index in range(pages):          
+      # get the page itself
+      page = pdf_file[page_index]
       
-      # get the image extension
-      image_ext = base_image["ext"]
-      # print(base_image["ext"], base_image["smask"], base_image["bpc"], base_image["cs-name"])
-      img = np.asarray(Image.open(io.BytesIO(image_bytes)))
-      # print(img.shape)
-      # cv2_imshow(img)
+      for image_index, img in enumerate(page.get_images(), start=1):
+          
+        # get the XREF of the image
+        xref = img[0]
+          
+        # extract the image bytes
+        base_image = pdf_file.extract_image(xref)
+        image_bytes = base_image["image"]
+        
+        # get the image extension
+        image_ext = base_image["ext"]
 
-      # logger.info(f"{{'page':{page_index+1}, 'pages':{len(pdf_file)}}}")
-      yield img, page_index+1, pages
-  
+        # print(base_image["ext"], base_image["smask"], base_image["bpc"], base_image["cs-name"])
+        img = np.asarray(Image.open(io.BytesIO(image_bytes)))
+        # print(img.shape)
+        # cv2_imshow(img)
+
+        # logger.info(f"{{'page':{page_index+1}, 'pages':{len(pdf_file)}}}")
+        yield img, page_index+1, pages
+        
 
 def create_image_page(pdf_new, img):
   newpage = pdf_new.newPage(-1, width=img.shape[1], height=img.shape[0])
