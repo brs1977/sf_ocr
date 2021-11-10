@@ -43,12 +43,12 @@ class PDFSplitter:
           yield base_image, page_index+1, pages
 
   def pdf_image_page(self, pdf_new, img):
-    newpage = pdf_new.newPage(-1, width=img.shape[1], height=img.shape[0])
+    newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
     rect = Rect(0, 0, img.shape[1], img.shape[0])
     img = Image.fromarray(img).convert('RGB')
     img_bytes = io.BytesIO()
     img.save(img_bytes, format='jpeg')
-    newpage.insertImage(rect, stream=img_bytes.getvalue())
+    newpage.insert_image(rect, stream=img_bytes.getvalue())
 
   def preprocess_image(self, image):
     # if image['width'] + image['height'] < 1400:
