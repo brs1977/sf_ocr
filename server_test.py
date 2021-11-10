@@ -2,7 +2,7 @@ import os
 import json
 import time
 from fastapi.testclient import TestClient
-from server_mem_prof import app
+from server import app
 from concurrent.futures.process import ProcessPoolExecutor
 
 app.state.executor = ProcessPoolExecutor() 
@@ -10,7 +10,7 @@ client = TestClient(app)
 
 
 def test_read_main():        
-    filename = '/home/ruslan/prj/sf_ocr/input/256277.pdf'
+    filename = 'input/256277.pdf'
     # print(filename)
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}
