@@ -14,8 +14,8 @@ import functools
 from skimage.util import img_as_float, img_as_ubyte
 from skimage.morphology import skeletonize
 
-pytesseract.pytesseract.tesseract_cmd = r'/home/ruslan/prj/sf_ocr/tesseract/tesseract'
-os.environ['TESSDATA_PREFIX'] = r'/home/ruslan/prj/sf_ocr/tesseract/tessdata'
+# pytesseract.pytesseract.tesseract_cmd = r'/home/ruslan/prj/sf_ocr/tesseract/tesseract'
+# os.environ['TESSDATA_PREFIX'] = r'/home/ruslan/prj/sf_ocr/tesseract/tessdata'
 
 
 def resize(img, x,y):

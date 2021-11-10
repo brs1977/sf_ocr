@@ -40,11 +40,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.file_path = 'output'
 config = Config('models/config.yaml')
 app.extractor = SfInfoExtractor(config)
-# app.orient_clf = load_model('models/orient.pkl')
-# app.type_clf = load_model('models/type.pkl')    
+app.orient_clf = load_model('models/orient.pkl')
+app.type_clf = load_model('models/type.pkl')    
 
-app.orient_clf = load_model('models/orient998.pkl')
-app.type_clf = load_model('models/type981.pkl')    
 
 app.lock = Lock()
 
