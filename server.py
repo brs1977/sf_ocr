@@ -194,7 +194,7 @@ def result(id):
             raise HTTPException(status_code=404)
 
         # del_state(id)
-        os.remove(os.path.join(app.file_path, f'{id}.pdf'))
+        # os.remove(os.path.join(app.file_path, f'{id}.pdf'))
 
         return FileResponse(path=os.path.join(app.file_path, f'{id}.zip'), media_type='application/zip')
     except Exception as e:
