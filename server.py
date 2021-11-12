@@ -103,7 +103,7 @@ def do_work(id):
             set_state(id, state)
 
         state['results'] = results
-        state['url'] = f'result/{id}.zip'
+        state['url'] = f'result/{id}'
 
     except Exception as e:
         logger.exception(e)
@@ -150,7 +150,6 @@ def do_work(id):
 
 async def run_in_process(fn, *args):
     loop = asyncio.get_event_loop()
-    # wait and return result
     return await loop.run_in_executor(app.state.executor, fn, *args)
 
 
@@ -189,6 +188,7 @@ def status(id):
 @app.get('/result/{id}')
 def result(id):
     try:
+        #TODO state c ошибкой в нем нет page
         state = get_state(id)
         if (state['page'] == 0 or state['page'] != state['pages']):
             raise HTTPException(status_code=404)

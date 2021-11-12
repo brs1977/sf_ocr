@@ -8,26 +8,44 @@ from concurrent.futures.process import ProcessPoolExecutor
 app.state.executor = ProcessPoolExecutor() 
 client = TestClient(app)
 
+def read_json(file_name):
+    with open(file_name) as f:
+        return json.load(f)
 
 def test_read_main():        
+    test_data = read_json('test_data/256277.json')
+    for i,info in enumerate(test_data):
+        del info['files']
+        test_data[i] = info
+
+
     filename = 'input/256277.pdf'
     # print(filename)
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}
         response = client.post("/ocr", files=files)
-
-        print(response.text)
         data = json.loads(response.text)
-        print(data)
 
     assert response.status_code == 200
     assert response.headers['content-type'] == 'application/json'
     # time.sleep(3)
-    response = client.get(f"/progress/{data['id']}")
-    print(response.text)
-    response = client.get(f"/result/{data['id']}")
+
+    id = data['id']
+    response = client.get(f"/progress/{id}")
+    data = json.loads(response.text)
+
+    # сравнить с тестом, выкинуть files (случайные названия)
+    data = data['results']
+    for i,info in enumerate(data):
+        del info['files']
+        data[i] = info
+    assert data == test_data
+
+    response = client.get(f"/result/{id}")
+    
+
+    response = client.get(f"/progress/{id}")
     # print(response.text)
-    response = client.get(f"/progress/{data['id']}")
-    print(response.text)
 
 test_read_main()    
+

@@ -18,3 +18,9 @@ server1.py
 server2.py
 server_mem_prof.py
 /tesseract
+/dataset
+/test_data
+/logs
+imgs.zip
+img_ds2.zip
+img_ds1.zip

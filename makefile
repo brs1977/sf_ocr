@@ -11,7 +11,7 @@ venv-init:
 
 	pip install -r requirements.txt
 
-gdown-models:
+models:
 	mkdir -p models
 	gdown --id 1-Q5BGBKs53ZsZZXgzTnNVxKq78ScZa20 -O models/type.pkl
 	gdown --id 1-PlVu3-wGVVIiBb2fcEpHzr-SLLSrw-x -O models/orient.pkl
@@ -32,3 +32,29 @@ tesseract-install:
 	wget https://github.com/tesseract-ocr/tessdata/blob/main/rus.traineddata?raw=true -O /usr/local/share/tessdata/rus.traineddata
 
 dataset-load:
+	mkdir -p dataset
+	mkdir -p dataset/png
+	gdown --id 1yjUmW5N2Ato3YsYKbntpyLk4DZQyZreM
+	unzip imgs.zip
+
+	rm ./imgs/cDcOHtKTmDc5W4VuQCF0Hvg0eJiSd8wI74ASe8hJ_4_sf_0.png
+	rm ./imgs/xAXL4pzcqoZxwp0LZO9cwMb4KYNzXJJrhKsKn1vu_1_sf_1.png
+	rm ./imgs/yT8Ois52rv0GP5OqGwyjVkxAPaSq3E4cgfktFv9K_5_sf_0.png	
+	rm ./imgs/2L7Tyset1siObeOZNnrbydkXnqXS0RJTNBRSQIkG_5_sf_0.png
+	rm ./imgs/EfegFVcai3uNitkeuwwmZksVl5pImY775mXhSoN3_7_sf_0.png
+	rm ./imgs/2L7Tyset1siObeOZNnrbydkXnqXS0RJTNBRSQIkG_7_sf_0.png 
+	rm ./imgs/cDcOHtKTmDc5W4VuQCF0Hvg0eJiSd8wI74ASe8hJ_3_sf_0.png
+	rm ./imgs/Gu4EKoSxskqej3JF1ycwnicWdH2QovGxgIdADBNs_8_sf_0.png 
+	rm ./imgs/939wTY7ws3xNfDVmjyrewW2LwlCqzmpPenB8Rndo_1_sf_1.png
+
+	mv ./imgs/svhEvdK9XsWb3iC1J4Otc0Nm9keMdbdOECRgLBe6_1_sf1_0.png ./imgs/svhEvdK9XsWb3iC1J4Otc0Nm9keMdbdOECRgLBe6_1_sf_1.png
+	mv ./imgs/NVxLArRUgvcjr8oPTlL549urC2q4h6c0Rf6BWlLT_2_sf1_0.png ./imgs/NVxLArRUgvcjr8oPTlL549urC2q4h6c0Rf6BWlLT_2_sf_0.png
+	mv ./imgs/davX4vAa0jJxAcK7eHayJ6Yve7DBxMul3e8K0289_8_sf_1.png ./imgs/davX4vAa0jJxAcK7eHayJ6Yve7DBxMul3e8K0289_8_sf1_0.png
+	mv ./imgs/bS3vL3MvkpzuedS9xy69JLBm9NuD6tkk0su8qsws_1_sf_0.png ./imgs/bS3vL3MvkpzuedS9xy69JLBm9NuD6tkk0su8qsws_1_sf_1.png
+	mv ./imgs/iizdgJzssY3Ic0Vs9zPbq9OoeCoo6Eb4lHvBj3Hz_9_sf_0.png ./imgs/iizdgJzssY3Ic0Vs9zPbq9OoeCoo6Eb4lHvBj3Hz_9_sf1_0.png
+	mv ./imgs/DBISj5rdHUzmCN7R0Jz1UXZZUvYurXe58ldRRbks_23_sf_1.png ./imgs/DBISj5rdHUzmCN7R0Jz1UXZZUvYurXe58ldRRbks_23_sf_0.png
+
+	mv ./imgs/*.png ./dataset/png
+	rm -rf imgs
+
+

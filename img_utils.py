@@ -18,6 +18,19 @@ from skimage.morphology import skeletonize
 # os.environ['TESSDATA_PREFIX'] = r'/home/ruslan/prj/sf_ocr/tesseract/tessdata'
 
 
+def dpi(w, h, tw=11.75, th=8.25):
+  '''
+  Where DPI is the average dots per inch
+  W is the total horizontal pixels
+  TW is the total width (in)
+  H is the total vertical pixels
+  TH is the total length (in)
+  A4 8-1/4 x 11-3/4 in
+
+  >>> dpi(3508,2480) = 300
+  '''
+  return round((w/tw + h/th ) /2)
+
 def resize(img, x,y):
   if img.shape[0]>img.shape[1]:
     size = (y, x)
@@ -173,6 +186,11 @@ def table_roi(mask):
   epsilon = 0.09*cv2.arcLength(contour,True)
   approx = cv2.approxPolyDP(contour,epsilon,True)
   x,y,w,h = cv2.boundingRect(approx)
+
+  # корректировка если регион таблицы не найден
+  h = h if h > mask.shape[0] / 10 else mask.shape[0]
+  w = w if w > mask.shape[1] / 2 else mask.shape[1]
+
   return x,y,w,h
 
 def calculate_angle(boxes):

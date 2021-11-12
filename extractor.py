@@ -84,13 +84,15 @@ class SfInfoExtractor:
   def extract_sf_data(self,text):
     sf_no, sf_date = None, None
     try:
+      # фильтруем хлам вида ^(*)$
+      text = list(filter(lambda x: not self.config.TRASH_PATTERN.search(x), text))
       try:
         #ищем по патерну с/ф
         i,sf_no_group = group_by_pattern(self.config.PATTERN_SF_NUM,text)  
       except:
         # если счет/фактура разбита на 2 слова, ищем по патерну счет или фактура
         i,sf_no_group = group_by_pattern(self.config.PATTERN_BILL,text)  
-        sf_no_group = ' '.join([t for t in text[i:i+4] if len(t)<25])
+        sf_no_group = ' '.join([t for t in text[i:i+4] if len(t)<25]) 
         i,sf_no_group = group_by_pattern(self.config.PATTERN_SF_NUM,[sf_no_group])  
 
       # если пусто то данные по с/ф ниже 
@@ -115,8 +117,13 @@ class SfInfoExtractor:
     except:
       pass
 
-    inn_seller, kpp_seller = self.extract_inn_kpp(self.config.PATTERN_SELLER, text)
-    inn_buyer, kpp_buyer = self.extract_inn_kpp(self.config.PATTERN_BUYER, text)
+    inn_seller, kpp_seller, inn_buyer, kpp_buyer = self.extract_inn_kpp(text)
+
+    # # buyer ниже
+    # inn_seller, kpp_seller = self.extract_inn_kpp1(self.config.PATTERN_SELLER, text)
+    # inn_buyer, kpp_buyer = self.extract_inn_kpp1(self.config.PATTERN_BUYER, text)
+
+    
 
     return {'sf_no':sf_no, 'sf_date': sf_date, 'buyer_inn':inn_buyer, 'buyer_kpp':kpp_buyer, 'seller_inn':inn_seller, 'seller_kpp':kpp_seller}
 
@@ -152,11 +159,70 @@ class SfInfoExtractor:
 
     return self.correct_sf_num(sf_no)  
 
+  def find_inn_kpp_depth(self, texts,i,depth=2,direction='top-bottom'):
+    top = texts[max(0,i-depth):i][::-1]
+    bottom = texts[i+1:min(len(texts),i+depth+1)]
+    # ищем вверх на depth потом ищем вниз на depth
+    search_list = [top,bottom]  
+    # иначе наоборот
+    if direction!='top-bottom':
+      search_list = search_list[::-1]
+    # logger.debug(search_list)
+    for lst in search_list:    
+      for text in lst:
+        if len(text)>25:
+          continue
+        text = ''.join([x for x in text if x!=' '])
+        inn_kpp_data = self.config.PATTERN_INN_KPP.findall(text)    
+        if inn_kpp_data:
+          return inn_kpp_data[0]
+    return None, None
 
-  def extract_inn_kpp(self, pattern, text):
+  def extract_inn_kpp(self, text):
+    inn_s, kpp_s, inn_b, kpp_b = None,None,None,None
+
+    s,b = 0,0
+    groups,groupb = '',''  
+    try:
+      s,groups = group_by_pattern(self.config.PATTERN_SELLER,text)
+      if len(groups)<19:
+        # может быть второе вхождение
+        _,groups = group_by_pattern(self.config.PATTERN_SELLER,text[s+1:])
+        text.pop(s)
+    except:
+      pass
+    try:  
+      b,groupb = group_by_pattern(self.config.PATTERN_BUYER,text)      
+      if len(groupb)<19:
+        # может быть второе вхождение
+        _,groupb = group_by_pattern(self.config.PATTERN_BUYER,text[b+1:])
+        text.pop(b)
+    except Exception as e:
+      pass
+
+    inn_kpp_data_s = self.config.PATTERN_INN_KPP.findall(groups)
+    if inn_kpp_data_s:
+      inn_s, kpp_s = inn_kpp_data_s[0]
+    else:
+      direction = 'top-bottom' if s<b else 'bottom-top'
+      inn_s, kpp_s = self.find_inn_kpp_depth(text,s,direction=direction)
+
+
+    inn_kpp_data_b = self.config.PATTERN_INN_KPP.findall(groupb)
+    if inn_kpp_data_b:
+      inn_b, kpp_b = inn_kpp_data_b[0]
+    else:
+      direction = 'bottom-top' if s<b else 'top-bottom'
+      inn_b, kpp_b = self.find_inn_kpp_depth(text,b,direction=direction)
+        
+    
+    return inn_s, kpp_s, inn_b, kpp_b
+
+  def extract_inn_kpp1(self, pattern, text):
     inn, kpp = None,None
     try:
       i,group = group_by_pattern(pattern,text)
+
       inn_kpp_data = self.config.PATTERN_INN_KPP.findall(group)    
       if not inn_kpp_data:
         group = text[i+1]
@@ -170,15 +236,27 @@ class SfInfoExtractor:
       pass
     return inn, kpp
 
+  def is_no_sf(self, text):
+    # документ не с/ф?
+    return not self.config.PATTERN_NOT_SF.search(text) is None
+
+
   def process(self, img):    
+    text = self.text_from_img(img)    
+    
+    #TODO убрать везде upper сделать 1 раз
+    if self.is_no_sf(text.upper()):
+      raise Exception('no sf')  
+
     try:
-      text = self.text_from_img(img)    
+      #TODO clean_text
+      # делим по переводу каретки удаляем пустые строки
       text = [x for x in text.split('\n') if x.strip()]
       
       info = self.extract_sf_data(text)        
       logger.debug('\n'.join(text))
       logger.debug(info)
-      return info
+      return info, text
     except Exception as e:
       logger.exception(e)
 
@@ -192,7 +270,8 @@ class SfInfoExtractor:
     vertical   = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_min_size)) )  
 
     mask = horizontal+vertical  
-    x,y,w,h = table_roi(mask)  
+    x,y,w,h = table_roi(mask) 
+    logger.debug('table roi {}',(x,y,w,h)) 
     
     mask = mask[y:y+h, x:x+w]  
     # mask = horizontal[y:y+h, x:x+w]  
@@ -215,7 +294,7 @@ class SfInfoExtractor:
     ''' отрезать ROI от вертикальной черты если есть '''
     gray =preprocess_image(gray, method=4, kernel_size=3)
     bw = to_binary(gray)
-    ver_min_size =  bw.shape[0] // 10 # 200
+    ver_min_size =  bw.shape[0] // 10 # 200    
     vertical   = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_min_size)) )
 
     x,y,w,h = 0,0,bw.shape[1],bw.shape[1]
@@ -238,12 +317,14 @@ class SfInfoExtractor:
 
 
   def text_from_img(self, img):
+    h,w = img.shape[:2]
+    d = dpi(w,h)
     # заголовок страницы с инфо по с/ф
     head_img = self.head_roi(img)
     # cv2_imshow(head_img)
 
     # ocr
-    return ocr_rus(head_img, config='--oem 1 --psm 11')
+    return ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')
 
 # class SfInfoExtractor:
 #   def __init__(self, config):

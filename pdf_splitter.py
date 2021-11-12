@@ -108,7 +108,7 @@ class PDFSplitter:
         if not imgs:
             return None
 
-        info = self.extractor.process(imgs[0])
+        info, text = self.extractor.process(imgs[0])
         # logger.debug(text)
         # logger.debug(info)
 
