@@ -42,7 +42,7 @@ def extract(file_name):
     info['file_name'] = file_name
     info['typ'] = typ
     info['orient'] = orient
-    info['text'] = '\n'.join(text)
+    info['text'] = text
     return info
 
 
@@ -95,6 +95,6 @@ def img_to_text():
 
 
     df = pd.DataFrame(data)
-    df.to_csv('output/csv/ocr_dpi.csv',index=False)
+    df.to_csv('output/csv/ocr_dpi_6.csv',index=False)
 
 img_to_text()    

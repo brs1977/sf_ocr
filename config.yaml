@@ -7,12 +7,22 @@ inn_kpp_num_template: (\d{10}).*?(\d{9})
 
 trash_template: ^[\(|{][А-Я0-9]*[\)|}]?$
 
+# Приложение № 1 к постановлению Правительства Российской Федерации
+trash_word_template:
+- РИЛОЖЕ
+- ОСТАНО
+- АВИТЕ
+- ССИЙ
+- ЕДЕРА
+
+
 replace_template:
 - ' 0Г'
 - ' 0Т'
 - ' ОТ'
 - ' ЭТ'
 - ' АТ'
+- ' ОГ'
 
 sf_num_template:
 - СЧЁТ-ФАКТУРА ?[№|М]?
@@ -73,7 +83,7 @@ inn_kpp_template:
 - ИНН/КПТ
 
 
-seller_template: ПРОДАВЦА:?
+seller_template: ПРОДАВ[Ц|И|Н]А:?
 buyer_template: ПОКУ[П|Л]АТЕЛЯ:?
 
 bill_template: СЧЕТ

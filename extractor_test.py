@@ -9,13 +9,80 @@ test_data_df = pd.read_csv('./test_data/ocr_test.csv', dtype={'sf_no': str,'buye
 config = Config('models/config.yaml')
 extractor = SfInfoExtractor(config)
 
+def ocr_data_df():
+    # sf_no	sf_date	buyer_inn	buyer_kpp	seller_inn	seller_kpp	file_name	typ	orient	text
+    data = []
+    for i,x in test_data_df.iterrows():
+        x = x.to_dict()
+        info = extractor.extract_sf_data(x['text'])    
+        x['sf_no'] = info['sf_no']
+        x['sf_date'] = info['sf_date']
+        x['buyer_inn'] = info['buyer_inn']
+        x['buyer_kpp'] = info['buyer_kpp']
+        x['seller_inn'] = info['seller_inn']
+        x['seller_kpp'] = info['seller_kpp']
+        data.append(x)
+    df = pd.DataFrame(data)
+    df.to_csv('ocr_test.csv', index = False)
 
 def test_ocr():
     for i,x in test_data_df.iterrows():
-        text = x.text.split('\n')
-        info = extractor.extract_sf_data(text)
+        # text = x.text.split('\n')
+        info = extractor.extract_sf_data(x.text)
         for k in info.keys():
+            if pd.isna(x[k]):
+                x[k] = None
             assert info[k]==x[k], f'{k}, {info[k]} not equals {x[k]}, {x.text}' 
+
+def test_sf_no_date():
+    texts =[ 
+    ['Приложение № 1',
+    'СЧЕТ-ФАКТУРА № ЦО4414',
+    'от',
+    '16.07.2021',
+    '(в ред. постановлений Правительства Российской Федерации от 25 мая 2017 г. № 625,',
+    'к постановлению Правительства Российской Федерации от 26 декабря 2011 г. № 1137',
+    'ИСПРАВЛЕНИЕ №   '  ],
+    ['169',
+    'от',
+    '5 апреля 2021 г.',
+    '(1)',
+    'Приложение № 1 к постановлению Правительства Российской Федерации от гб декабря гО11 г. № 1137',
+    'Счет-фактура №',
+    '(в редакции постановления Правительства Российской Федерации от 19 августа 2017 г. № 981)',
+    'Исправление №',
+    '--',
+    'от',],
+    ['(1)',
+    'Приложение № 1 к постановлению Правительства Российской Федерации от гб декабря гО11 г. № 1137',
+    'Счет-фактура №',
+    '169',
+    'от',
+    '5 апреля 2021 г.',   
+    '(в редакции постановления Правительства Российской Федерации от 19 августа 2017 г. № 981)',
+    'Исправление №',
+    '--',
+    'от',],
+    ['(1)',
+    'Приложение № 1 к постановлению Правительства Российской Федерации от гб декабря гО11 г. № 1137',
+    'Счет-фактура № 169 от 5 апреля 2021 г.',
+    '(в редакции постановления Правительства Российской Федерации от 19 августа 2017 г. № 981)',
+    'Исправление №',
+    '--',
+    'от',], 
+    ['Приложение № 1 к постановлению Правительства Российской Федерации от 26 декабря 2011 г. № 1137',
+    '(в редакции постановления Правительства Российской Федерации от 19 августа 2017 г. № 981)',
+    'Счет-фактура № 1289 от 03 марта 2021 г.',
+    'Исправление № -- от --',
+    'Продавец: Акционерное общество "Электроизолит']
+    ]
+    res = []
+    for text in texts:
+        text = [x.upper() for x in text]
+        res.append(extractor.extract_sf_no_and_date(text))
+
+    assert_data = [('ЦО4414', '16.07.2021'), ('', '05.04.2021'), ('169', '05.04.2021'), ('169', '05.04.2021'), ('1289', '03.03.2021')]
+    assert res == assert_data
 
 
 def test_inn_kpp():
@@ -93,12 +160,28 @@ def test_inn_kpp():
     '(66)',
     'Грузсотправитель и его адрес:', ] ]
 
+    assert_data = [('2225008370', '222501001', '2225008370', '222501001'),
+    ('2225008370', '222501001', '2225008370', '222501001'),
+    ('2225008370', '222501001', '2225008370', '222501001'),
+    ('2225008370', '222501001', '5042000530', '504201001'),
+    ('2225008370', '222501001', '5042000530', '504201001'),
+    ('2225008370', '222501001', '5042000530', '504201001'),
+    ('2225008370', '222501001', '5042000530', '504201001'),
+    ('2225008370', '222501001', '5042000530', '504201001') ]
+
+    res = []
     for text in texts:
-        print(extractor.extract_inn_kpp(text))
+        text = [x.upper() for x in text]
+        res.append(extractor.extract_inn_kpp(text))
+    
+    assert res == assert_data
+
+
 
 
 # test_inn_kpp()
-test_ocr()
-
+# test_ocr()
+# ocr_data_df()
+test_sf_no_date()
 
 

@@ -26,4 +26,7 @@ class Config:
     self.NUMS_LETTER_CORRECT = data['nums_letter_correct']
     self.PATTERN_REPLACE = re.compile('|'.join([x for x in data['replace_template']]))
     self.TRASH_PATTERN = re.compile(data['trash_template'])
+
+    self.PATTERN_TRASH_WORD = re.compile('|'.join(data['trash_word_template']))
+    
     
