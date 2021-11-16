@@ -17,6 +17,14 @@ models:
 	gdown --id 1-PlVu3-wGVVIiBb2fcEpHzr-SLLSrw-x -O models/orient.pkl
 	cp config.yaml models
 
+run:
+	/home/ruslan/prj/sf_ocr/venv/bin/uvicorn server:app --host 0.0.0.0 --port 9091 --workers 1 --app-dir .
+
+	# app="www_ocr"
+	# # docker build -t ${app} .
+	# docker run -d -p 9095:9095 ${app} --name ${app} --rm
+
+
 tesseract-install:
 	apt-get install -y python3-pip python3-dev build-essential libgl1-mesa-dev curl autoconf libtool libleptonica-dev
 	wget https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.0.0-rc1.zip
@@ -56,5 +64,13 @@ dataset-load:
 
 	mv ./imgs/*.png ./dataset/png
 	rm -rf imgs
+
+compile:
+	# cp ocr.py ocr.pyx
+	# cython ocr.pyx --embed
+	# gcc -Os -I /usr/include/python3.6 -o ocr ocr.c -lpython3.6 -lpthread -lm -lutil -ldl
+
+	pip3 install pyinstaller
+	pyinstaller ocr.py --onefile
 
 
