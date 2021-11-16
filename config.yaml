@@ -86,13 +86,14 @@ inn_kpp_template:
 seller_template: ПРОДАВ[Ц|И|Н]А:?
 buyer_template: ПОКУ[П|Л]АТЕЛЯ:?
 
-bill_template: СЧЕТ
+bill_template: СЧЕТ|СЧЁТ
 
 month:
   ЯНВАРЯ: '01'
   ФЕВРАЛЯ: '02'
   ФЕВРАПЯ: '02'
   МАРТА: '03'
+  МЕРТА: '03'
   АПРЕЛЯ: '04'
   МАЯ: '05'
   ИЮНЯ: '06'

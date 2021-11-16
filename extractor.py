@@ -258,13 +258,32 @@ class SfInfoExtractor:
   def clean_text(self, text):    
     # фильтруем хлам вида ^(*)$
     text = list(filter(lambda x: not self.config.TRASH_PATTERN.search(x), text))
-    text = list(filter(lambda x: not self.config.PATTERN_TRASH_WORD.search(x.upper()), text))      
+    text = list(filter(lambda x: (not self.config.PATTERN_TRASH_WORD.search(x)) | (not self.config.PATTERN_BILL.search(x) is None), text))      
     return text
 
   def process(self, img):    
-    text = self.text_from_img(img)    
+    # text = self.text_from_img(img)    
+    h,w = img.shape[:2]
+    d = dpi(w,h)
+    # заголовок страницы с инфо по с/ф
+    head_img = self.head_roi(img)
+    # ocr
+    text = ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')    
+
     try:      
       info = self.extract_sf_data(text)        
+
+      # если встретилось не заполненное поле
+      for k in info.keys():
+        if not info[k]:          
+          # провести ocr --psm 6 и заполнить не проставленные поля
+          text1 = ocr_rus(head_img, config = f'--oem 1 --psm 6')
+          info1 = self.extract_sf_data(text1) 
+          for k1 in info.keys():
+            if bool(not info[k1]) & bool(info1[k1]):
+              info[k1] = info1[k1]
+          text += '\n++++++++++++++++++++\n' + text1
+          break
 
       dtext = '\n'.join([ x for x in text.split('\n') if len(x)>2 ])
       logger.debug(dtext)
@@ -337,5 +356,5 @@ class SfInfoExtractor:
     # cv2_imshow(head_img)
 
     # ocr
-    # return ocr_rus(head_img, config = f'--oem 1 --psm 11')
-    return ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')
+    return ocr_rus(head_img, config = f'--oem 1 --psm 6')
+    # return ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')

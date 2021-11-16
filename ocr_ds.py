@@ -95,6 +95,6 @@ def img_to_text():
 
 
     df = pd.DataFrame(data)
-    df.to_csv('output/csv/ocr_dpi_6.csv',index=False)
+    df.to_csv('output/csv/ocr11_6.csv',index=False)
 
-img_to_text()    
+img_to_text()     
