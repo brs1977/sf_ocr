@@ -61,6 +61,7 @@ dataset-load:
 	mv ./imgs/bS3vL3MvkpzuedS9xy69JLBm9NuD6tkk0su8qsws_1_sf_0.png ./imgs/bS3vL3MvkpzuedS9xy69JLBm9NuD6tkk0su8qsws_1_sf_1.png
 	mv ./imgs/iizdgJzssY3Ic0Vs9zPbq9OoeCoo6Eb4lHvBj3Hz_9_sf_0.png ./imgs/iizdgJzssY3Ic0Vs9zPbq9OoeCoo6Eb4lHvBj3Hz_9_sf1_0.png
 	mv ./imgs/DBISj5rdHUzmCN7R0Jz1UXZZUvYurXe58ldRRbks_23_sf_1.png ./imgs/DBISj5rdHUzmCN7R0Jz1UXZZUvYurXe58ldRRbks_23_sf_0.png
+	mv ./imgs/IG1lduvXyj0pDCqIw7WsRnU7wDs2aol5gEsBy1yT_1_sf_0.png ./imgs/IG1lduvXyj0pDCqIw7WsRnU7wDs2aol5gEsBy1yT_1_sf1_0.png
 
 	mv ./imgs/*.png ./dataset/png
 	rm -rf imgs

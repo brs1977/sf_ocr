@@ -5,6 +5,7 @@ from PIL import Image
 from glob import glob
 import io
 from loguru import logger
+from collections import Counter
 import math
 import fitz
 import pytesseract as pytesseract
@@ -30,6 +31,17 @@ def dpi(w, h, tw=11.75, th=8.25):
   >>> dpi(3508,2480) = 300
   '''
   return round((w/tw + h/th ) /2)
+
+def increase_brightness(img, value=30):
+  hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+  h, s, v = cv2.split(hsv)
+  lim = 255 - value
+  v[v > lim] = 255
+  v[v <= lim] += value
+  final_hsv = cv2.merge((h, s, v))
+  img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+  return img  
+
 
 def resize(img, x,y):
   if img.shape[0]>img.shape[1]:
@@ -177,7 +189,34 @@ def point_rotation(points,rot_mat):
 
   return np.asarray(transformed_points, dtype=np.uint16)
 
-def table_roi(mask):
+def table_roi(horizontal, vertical):  
+  mask = cv2.bitwise_and(horizontal, vertical)
+  delta = round(mask.shape[0]/35)
+  joints_contours, _ = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+  if not joints_contours:
+    return 0, mask.shape[0]
+  y_coor = []
+  for i in joints_contours:
+    y_coor.append(cv2.minEnclosingCircle(i)[0][1])
+
+  y_coor = sorted(y_coor)
+
+  yl = []
+  for index in range(len(y_coor) - 1):
+    if abs(y_coor[index] - y_coor[index + 1]) < delta:
+      y_coor[index + 1] = y_coor[index]
+      yl.append(y_coor[index])
+  
+  counter = Counter(yl)
+  values = list(counter.values())
+  if not values:
+    return 0, mask.shape[0]
+
+  mean = min(round(np.mean(values)),9)
+  values = [k for k,v in counter.items() if v>=mean]  
+  return round(max(0,min(values)-delta/2)),round(min(max(values)+delta/2,mask.shape[0]))
+
+def table_roi1(mask):
   contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
   contour_areas = list(map(cv2.contourArea, contours))
   largest_contour_idx = np.argmax(list(contour_areas))

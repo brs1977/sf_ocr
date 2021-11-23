@@ -1,6 +1,13 @@
 from img_utils import *
+import string
 import functools
 from loguru import logger
+
+class NoSfException(Exception):
+    pass
+
+def clean_space(text):
+  return ''.join([x for x in text if x!=' '])  
 
 def logger_wraps(*, entry=True, exit=True, level="DEBUG"):
     def wrapper(func):
@@ -54,6 +61,8 @@ class SfInfoExtractor:
     if not dt:
       return None
     
+    res = self.config.PATTERN_DATE_SEARCH.search(dt)
+    dt = res.groups()[1] if res else dt
     split_data = self.config.PATTERN_DATE_SPLIT.split(dt)
 
     if len(split_data)==1 and len(split_data[0])>10:
@@ -61,6 +70,7 @@ class SfInfoExtractor:
     elif len(split_data)==3:
       split_data = [x.strip() for x in split_data]
       d,m,y = split_data
+      d = ''.join([x for x in d if x!='.'])
       m = self.config.MONTH[m]   
       return to_date(d,m,y)
 
@@ -83,11 +93,11 @@ class SfInfoExtractor:
 
   def extract_sf_no_and_date(self, text):
     def sf_no_and_date(i, sf_no_group, text):
-      # очистка от ошибок распознавания
-      sf_no_group = ''.join([x for x in sf_no_group if x not in ',`‘\'"~!@#$%^&*();:?*+=|\\'])
-      
+      # # очистка от ошибок распознавания
+      # sf_no_group = ''.join([x for x in sf_no_group if x not in ',\[\]`‘\'"~!@#$%^&*();:?*+=|\\'])
+            
       # ищем дату, до даты получается номер
-      res = self.config.PATTERN_DATE_SEARCH.search(sf_no_group)
+      res = self.config.PATTERN_DATE_SEARCH.search(sf_no_group)      
       if res:
         sf_no, sf_date = res.groups()
         sf_no = self.extract_sf_no(sf_no)
@@ -97,6 +107,8 @@ class SfInfoExtractor:
       else:
         sf_no = self.extract_sf_no(sf_no_group)
         sf_date = ' '.join([t for t in text[i+1:i+3] if 8<len(t)<25])
+        if not sf_date.strip():
+          sf_date = ' '.join([t for t in text[max(0,i-3):i] if 8<len(t)<25])
         sf_date = self.extract_date(sf_date)
       return sf_no, sf_date
 
@@ -124,14 +136,14 @@ class SfInfoExtractor:
 
         sf_no_group = ' '.join([t for t in text[max(0,i-4):i] if len(t)<25])
         return sf_no_and_date(i, sf_no_group, text)
-    except:
+    except Exception as e:
+      logger.exception(e)
       return None, None
 
   def extract_sf_data(self,text):
     text = text.upper()    
     if self.is_no_sf(text):
-      return {'sf_no':None, 'sf_date': None, 'buyer_inn':None, 'buyer_kpp':None, 'seller_inn':None, 'seller_kpp':None}
-      # raise Exception('no sf')  
+      raise NoSfException()
 
     # делим по переводу каретки удаляем пустые строки
     text = [x for x in text.split('\n') if x.strip()]
@@ -187,7 +199,7 @@ class SfInfoExtractor:
       for text in lst:
         if len(text)>25:
           continue
-        text = ''.join([x for x in text if x!=' '])
+        text =  clean_space(text)
         inn_kpp_data = self.config.PATTERN_INN_KPP.findall(text)    
         if inn_kpp_data:
           return inn_kpp_data[0]
@@ -214,7 +226,8 @@ class SfInfoExtractor:
         text.pop(b)
     except Exception as e:
       pass
-
+    
+    groups = clean_space(groups)
     inn_kpp_data_s = self.config.PATTERN_INN_KPP.findall(groups)
     if inn_kpp_data_s:
       inn_s, kpp_s = inn_kpp_data_s[0]
@@ -222,7 +235,7 @@ class SfInfoExtractor:
       direction = 'top-bottom' if s<b else 'bottom-top'
       inn_s, kpp_s = self.find_inn_kpp_depth(text,s,direction=direction)
 
-
+    groupb = clean_space(groupb)
     inn_kpp_data_b = self.config.PATTERN_INN_KPP.findall(groupb)
     if inn_kpp_data_b:
       inn_b, kpp_b = inn_kpp_data_b[0]
@@ -255,10 +268,20 @@ class SfInfoExtractor:
     # документ не с/ф?
     return not self.config.PATTERN_NOT_SF.search(text) is None
 
-  def clean_text(self, text):    
-    # фильтруем хлам вида ^(*)$
-    text = list(filter(lambda x: not self.config.TRASH_PATTERN.search(x), text))
+  def  clean_text(self, text):    
+    # фильтруем хлам вида ^(*)$    
+    text = list(filter(lambda x: (not self.config.TRASH_PATTERN.search(x)), text))
     text = list(filter(lambda x: (not self.config.PATTERN_TRASH_WORD.search(x)) | (not self.config.PATTERN_BILL.search(x) is None), text))      
+
+    # удаляем ненужные символы
+    for i,t in enumerate(text):
+      t = ''.join([x for x in t if x not in '_—,\[\]`‘\'"~!@#$%^&*();:?*+=|\\'])
+      text[i] = t
+
+    # удалить пустые строки заменить сдвоенные пробелы
+    text = [re.sub(' +',' ',x) for x in text if len(x.strip())>1]
+    text = [re.sub('\. ','.',x) for x in text]
+
     return text
 
   def process(self, img):    
@@ -267,6 +290,7 @@ class SfInfoExtractor:
     d = dpi(w,h)
     # заголовок страницы с инфо по с/ф
     head_img = self.head_roi(img)
+    # head_img = increase_brightness(head_img,15)
     # ocr
     text = ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')    
 
@@ -289,10 +313,13 @@ class SfInfoExtractor:
       logger.debug(dtext)
       logger.debug(info)
       return info, text
+    except NoSfException as ex:
+      logger.error('no sf')
+      return {'sf_no':None, 'sf_date': None, 'buyer_inn':None, 'buyer_kpp':None, 'seller_inn':None, 'seller_kpp':None}, None
     except Exception as e:
       logger.exception(e)
 
-  def head_roi(self, img):
+  def head_roi1(self, img):
     gray =preprocess_image(img, method=4, kernel_size=3)
     # gray = to_gray(img)
     bw = to_binary(gray)
@@ -310,6 +337,78 @@ class SfInfoExtractor:
     angle = calculate_angle(horizontal)
     if y < mask.shape[0]//10:
       y = mask.shape[0] // 4
+
+    img = img[0:y,0:img.shape[1]] 
+    _,img = rotation(img,angle)  
+
+    # отрезать от вертикальной черты если есть
+    x,y,w,h = self.right_region(img)
+    roi = img[y:y+h, x:x+w]  
+
+    # roi = remove_ticket(roi)
+
+    return roi 
+
+  def head_roi(self, img):
+    gray =preprocess_image(img, method=4, kernel_size=3)
+    bw = to_binary(gray)
+
+    hor_min_size = bw.shape[1] // 10
+    ver_min_size =  bw.shape[0] // 10 # 200
+    horizontal = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (hor_min_size, 1)) )
+    vertical   = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_min_size)) )  
+
+    min_y,max_y = table_roi(horizontal,vertical)     
+    logger.debug('table roi {}',(min_y,max_y)) 
+    y = min_y
+
+    # x,y,w,h = table_roi1(horizontal+vertical)    
+    # logger.debug('table roi {}',(x,y,w,h))  
+    
+
+    if y < img.shape[0]//4:      
+      y = int(img.shape[0] // 2.5)
+
+    angle = calculate_angle(horizontal)
+    
+    img = img[0:y,0:img.shape[1]] 
+    _,img = rotation(img,angle)  
+    
+
+    # отрезать от вертикальной черты если есть
+    x,y,w,h = self.right_region(img)
+    roi = img[y:y+h, x:x+w]  
+
+    # roi = remove_ticket(roi)
+
+    return roi 
+
+
+  def head_roi2(self, img):
+    gray =preprocess_image(img, method=4, kernel_size=3)
+    # gray = to_gray(img)
+    bw = to_binary(gray)
+    hor_min_size = bw.shape[1] // 10
+    ver_min_size =  bw.shape[0] // 10 # 200
+    horizontal = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (hor_min_size, 1)) )
+    vertical   = to_lines(bw, cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_min_size)) )  
+
+    mask = horizontal+vertical  
+    # x,y,w,h = table_roi1(horizontal,vertical) 
+    # logger.debug('table roi {}',(min_y,max_y)) 
+    min_y,max_y = table_roi(horizontal,vertical)     
+    y = min_y
+    h = max_y-y
+    x = 0
+    w = mask.shape[1]
+
+    mask = mask[y:y+h, x:x+w]
+
+    # mask = horizontal[y:y+h, x:x+w]  
+    angle = calculate_angle(horizontal)
+    
+    if y < mask.shape[0]//4:      
+      y = int(mask.shape[0] // 2.5)
 
     img = img[0:y,0:img.shape[1]] 
     _,img = rotation(img,angle)  
@@ -344,7 +443,8 @@ class SfInfoExtractor:
 
     x1,y1,w1,h1 = vert_rect_list[max_h_contour_idx][1]
     if h1 > bw.shape[0] / 2 and x1 < bw.shape[1] / 2 :
-      return x1+w1,max(0,y1-5),bw.shape[1]-x1,y1+h1
+      return x1+w1,0,bw.shape[1]-x1,bw.shape[0]
+      # return x1+w1,max(0,y1-5),bw.shape[1]-x1,y1+h1
     return x,y,w,h
 
 
