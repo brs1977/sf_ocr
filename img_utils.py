@@ -120,6 +120,9 @@ def correct_skew3(image, background = (255,255,255)):
   img_edges = cv2.Canny(image, 200, 200, apertureSize=3)
   lines = cv2.HoughLinesP(img_edges, rho=1, theta=np.pi / 180.0, threshold=160, minLineLength=150, maxLineGap=10)
   
+  if lines is None:
+    return 0.0, orig
+
   # calculate all the angles:
   angles = []
   for [[x1, y1, x2, y2]] in lines:

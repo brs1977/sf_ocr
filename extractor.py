@@ -379,6 +379,9 @@ class SfInfoExtractor:
     x,y,w,h = self.right_region(img)
     roi = img[y:y+h, x:x+w]  
 
+    if roi.shape[1]==0:      
+      return img
+
     # roi = remove_ticket(roi)
 
     return roi 
