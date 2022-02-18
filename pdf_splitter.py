@@ -26,23 +26,41 @@ class PDFSplitter:
         self.type_clf = type_clf
         self.extractor = extractor
 
+    
     def pdf_images_gen(self, file_name):
         with fitz.open(file_name) as pdf_file:
             pages = len(pdf_file)
             # iterate over PDF pages
-            for page_index in range(pages):
+            for page_index in range(pages):    
                 # get the page itself
                 page = pdf_file[page_index]
 
-                for image_index, img in enumerate(page.get_images(), start=1):
+                img = page.get_images()[0]  # there is only 1 image per page!
+                xref = img[0]
 
-                    # get the XREF of the image
-                    xref = img[0]
+                # base_image = fitz.Pixmap(pdf_file, xref) 
+                base_image = pdf_file.extract_image(xref)
 
-                    # extract the image bytes
-                    base_image = pdf_file.extract_image(xref)
+                yield base_image, page_index+1, pages
+    
+    
+    # def pdf_images_gen(self, file_name):
+    #     with fitz.open(file_name) as pdf_file:
+    #         pages = len(pdf_file)
+    #         # iterate over PDF pages
+    #         for page_index in range(pages):
+    #             # get the page itself
+    #             page = pdf_file[page_index]
 
-                    yield base_image, page_index+1, pages
+    #             for image_index, img in enumerate(page.get_images(), start=1):
+
+    #                 # get the XREF of the image
+    #                 xref = img[0]
+
+    #                 # extract the image bytes
+    #                 base_image = pdf_file.extract_image(xref)
+
+    #                 yield base_image, page_index+1, pages
 
     def pdf_image_page(self, pdf_new, img):
         newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
