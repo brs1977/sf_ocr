@@ -30,38 +30,21 @@ class PDFSplitter:
     def pdf_images_gen(self, file_name):
         with fitz.open(file_name) as pdf_file:
             pages = len(pdf_file)
-            # iterate over PDF pages
-            for page_index in range(pages):    
-                # get the page itself
+            for page_index in range(pages):
                 page = pdf_file[page_index]
 
-                img = page.get_images()[0]  # there is only 1 image per page!
-                xref = img[0]
+                # # get text block
+                # blocks = page.get_text("blocks")
+                # blocks.sort(key=lambda block: block[3])  # sort by 'y1' values
+                # text = [ ' '.join(block[4].split()) for block in blocks]
 
-                # base_image = fitz.Pixmap(pdf_file, xref) 
-                base_image = pdf_file.extract_image(xref)
+                # max image
+                images = [pdf_file.extract_image(img[0]) for img in page.get_images() ]      
+                images.sort(key=lambda img : -img['width']*img['height'] )
 
-                yield base_image, page_index+1, pages
+                yield images[0], page_index+1, pages
     
     
-    # def pdf_images_gen(self, file_name):
-    #     with fitz.open(file_name) as pdf_file:
-    #         pages = len(pdf_file)
-    #         # iterate over PDF pages
-    #         for page_index in range(pages):
-    #             # get the page itself
-    #             page = pdf_file[page_index]
-
-    #             for image_index, img in enumerate(page.get_images(), start=1):
-
-    #                 # get the XREF of the image
-    #                 xref = img[0]
-
-    #                 # extract the image bytes
-    #                 base_image = pdf_file.extract_image(xref)
-
-    #                 yield base_image, page_index+1, pages
-
     def pdf_image_page(self, pdf_new, img):
         newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
         rect = Rect(0, 0, img.shape[1], img.shape[0])
@@ -174,3 +157,4 @@ class PDFSplitter:
             shutil.make_archive(self.out_file_name, 'zip', tmp_dir)
 
             yield page, pages, info
+

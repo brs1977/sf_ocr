@@ -20,8 +20,9 @@ def test_read_main():
 
 
     filename = 'input/256277.pdf'
+    # filename = 'input/256611.pdf'
     # filename = 'input/e70e638e-0981-4bda-8515-ee75c25a812e.pdf' # 30 pic 
-    filename = '/home/rttec/projects/sf_ocr/input/6295ad01-652d-4258-b268-170c9aac0503.pdf' #140
+    # filename = '/home/rttec/projects/sf_ocr/input/6295ad01-652d-4258-b268-170c9aac0503.pdf' #140
     # print(filename)
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}
