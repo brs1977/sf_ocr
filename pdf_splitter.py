@@ -13,7 +13,7 @@ from img_utils import *
 INDEX_PATTERN = re.compile('_(\d*)')
 
 
-def gen_temp_name():
+def temp_file_name():
     return next(tempfile._get_candidate_names())
 
 
@@ -27,7 +27,7 @@ class PDFSplitter:
         self.extractor = extractor
 
     
-    def pdf_images_gen(self, file_name):
+    def pdf_page_image_gen(self, file_name):
         with fitz.open(file_name) as pdf_file:
             pages = len(pdf_file)
             for page_index in range(pages):
@@ -45,7 +45,7 @@ class PDFSplitter:
                 yield images[0], page_index+1, pages
     
     
-    def pdf_image_page(self, pdf_new, img):
+    def image_to_pdf_page(self, pdf_new, img):
         newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
         rect = Rect(0, 0, img.shape[1], img.shape[0])
         img = Image.fromarray(img).convert('RGB')
@@ -105,7 +105,7 @@ class PDFSplitter:
         self.files[fn] = fn
         return fn
 
-    def save_data(self, tmp_dir, imgs):
+    def create_pdf(self, tmp_dir, imgs):
         if not imgs:
             return None
 
@@ -113,7 +113,7 @@ class PDFSplitter:
         # logger.debug(text)
         # logger.debug(info)
 
-        file_name = gen_temp_name()  # self._get_file_name(info['sf_no'])
+        file_name = temp_file_name()  # self._get_file_name(info['sf_no'])
 
         # with open(os.path.join(tmp_dir,file_name+'.json'), 'w') as json_file:
         #   json_file.write(json.dumps(info))
@@ -121,7 +121,7 @@ class PDFSplitter:
         files = []
         for i, img in enumerate(imgs):
             with fitz.open() as pdf_new:
-                self.pdf_image_page(pdf_new, img)
+                self.image_to_pdf_page(pdf_new, img)
                 fn = f'{file_name}-{i+1}.pdf'
                 files.append(fn)
                 pdf_new.save(os.path.join(tmp_dir, fn),
@@ -135,11 +135,11 @@ class PDFSplitter:
             results = []
             imgs = []
             is_first = True
-            for image, page, pages in self.pdf_images_gen(self.pdf_file):
+            for image, page, pages in self.pdf_page_image_gen(self.pdf_file):
                 typ, img = self.preprocess_image(image)
 
                 if typ == 1 and not is_first:
-                    info = self.save_data(tmp_dir, imgs)
+                    info = self.create_pdf(tmp_dir, imgs)
                     results.append(info)
                     imgs = []
                     yield page, pages, info
@@ -147,7 +147,7 @@ class PDFSplitter:
                 imgs.append(img)
                 is_first = False
 
-            info = self.save_data(tmp_dir, imgs)
+            info = self.create_pdf(tmp_dir, imgs)
             results.append(info)
 
             with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
