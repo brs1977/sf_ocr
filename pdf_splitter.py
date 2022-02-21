@@ -53,15 +53,12 @@ class PDFSplitter:
         img.save(img_bytes, format='jpeg')
         newpage.insert_image(rect, stream=img_bytes.getvalue())
 
-    def preprocess_image(self, image):
-        # if image['width'] + image['height'] < 1400:
-        #   return -1, None
-
-        # # get the image extension
-        # image_ext = image["ext"]
-
+    def bytes_to_image(self, image):
         image_bytes = image["image"]
-        img = np.asarray(Image.open(io.BytesIO(image_bytes)))
+        return np.asarray(Image.open(io.BytesIO(image_bytes)))
+
+    def preprocess_image(self, image):
+        img = self.bytes_to_image(image)
 
         gray = to_gray(img)
         h, w = gray.shape

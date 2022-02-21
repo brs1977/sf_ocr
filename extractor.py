@@ -226,7 +226,9 @@ class SfInfoExtractor:
         text.pop(b)
     except Exception as e:
       pass
-    
+
+    logger.debug(('PATTERN_SELLER',groups))
+    logger.debug(('PATTERN_BUYER',groupb))
     groups = clean_space(groups)
     inn_kpp_data_s = self.config.PATTERN_INN_KPP.findall(groups)
     if inn_kpp_data_s:
