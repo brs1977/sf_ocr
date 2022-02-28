@@ -38,6 +38,7 @@ tesseract-install:
 	ldconfig
 
 	wget https://github.com/tesseract-ocr/tessdata/blob/main/rus.traineddata?raw=true -O /usr/local/share/tessdata/rus.traineddata
+	wget https://github.com/tesseract-ocr/tessdata/blob/main/eng.traineddata?raw=true -O /usr/local/share/tessdata/eng.traineddata
 
 dataset-load:
 	mkdir -p dataset

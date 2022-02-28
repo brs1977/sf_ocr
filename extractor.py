@@ -35,14 +35,52 @@ def regexp_group_by_pattern(arr,pattern):
       return grp[0][1]
   return None
 
-def group_by_pattern(pattern,text):
-  for i,t in enumerate(text):
-    grp = pattern.findall(text[i].upper())
+def group_by_pattern(pattern,text,s=0):
+  for i,t in enumerate(text[s:]):
+    grp = pattern.findall(text[s+i].upper())
     if grp:
-      return i, grp[0][1]
+      return i+s, grp[0][1]
   raise LookupError  
 
+def format_text(details, left_break):
+    parse_text = []
+    coords = []
+    word_list = []
+    last_word = ''
+    left = 10000 
+    top = 10000 
+    width = height = 0
+    for i, word in enumerate(details['text']):
+        if details['top'][i] == 0 and details['left'][i] == 0:
+          continue
+        if word != '':                         
+            if details['left'][i] < left_break:
+              top = min(top,details['top'][i]) 
+              left = min(left,details['left'][i]) 
+              # height = max(height,details['height'][i])                         
+              height = max(height, (details['top'][i] + details['height'][i]) - top)
+              width = max(left, (details['left'][i] + details['width'][i]) - left)
 
+              word_list.append(word)
+            last_word = word
+        if (last_word != '' and word == '') or (word == details['text'][-1]):
+            if word_list and word_list != [' ']:
+                parse_text.append(' '.join(word_list))
+                coords.append((left, top, width, height))
+
+            left = 10000 
+            top = 10000 
+            width = height = 0
+
+            word_list = []
+
+    return parse_text, coords
+
+def find_part_text(data, part):
+  for i, x in enumerate(data['text']):
+    if x.upper().startswith(part):
+      return i
+  raise LookupError
 
 class SfInfoExtractor:
   def __init__(self, config):
@@ -140,6 +178,35 @@ class SfInfoExtractor:
       logger.exception(e)
       return None, None
 
+  def extract_sf_data_from_text_pdf(self,text):
+    text = text.upper()    
+    if self.is_no_sf(text):
+      raise NoSfException()
+
+    # делим по переводу каретки удаляем пустые строки
+    text = [x for x in text.split('\n') if x.strip()]
+    text = self.clean_text(text)
+    sf_no, sf_date = self.extract_sf_no_and_date(text)
+
+    inn_seller, kpp_seller, inn_buyer, kpp_buyer = None, None, None, None
+
+    # inn_kpp_patern = re.compile('ИНН/КПП')
+
+    # индексы слов
+    sid, _ = group_by_pattern(self.config.PATTERN_SELLER,text)
+    bid, _ = group_by_pattern(self.config.PATTERN_BUYER,text)
+
+    ik_seller, _ = group_by_pattern(self.config.PATTERN_INN_KPP,text,sid+1)
+    ik_buyer, _ = group_by_pattern(self.config.PATTERN_INN_KPP,text,bid+1)
+
+
+    if sid < bid and ik_seller <  ik_buyer:
+      inn_seller, kpp_seller = self.config.PATTERN_INN_KPP.findall(text[ik_seller])[0]
+      inn_buyer, kpp_buyer = self.config.PATTERN_INN_KPP.findall(text[ik_buyer])[0]
+
+
+    return {'sf_no':sf_no, 'sf_date': sf_date, 'buyer_inn':inn_buyer, 'buyer_kpp':kpp_buyer, 'seller_inn':inn_seller, 'seller_kpp':kpp_seller}
+
   def extract_sf_data(self,text):
     text = text.upper()    
     if self.is_no_sf(text):
@@ -211,18 +278,18 @@ class SfInfoExtractor:
     s,b = 0,0
     groups,groupb = '',''  
     try:
-      s,groups = group_by_pattern(self.config.PATTERN_SELLER,text)
+      s,groups = group_by_pattern(self.config.PATTERN_INN_KPP_SELLER,text)
       if len(groups)<19:
         # может быть второе вхождение
-        _,groups = group_by_pattern(self.config.PATTERN_SELLER,text[s+1:])
+        _,groups = group_by_pattern(self.config.PATTERN_INN_KPP_SELLER,text[s+1:])
         text.pop(s)
     except:
       pass
     try:  
-      b,groupb = group_by_pattern(self.config.PATTERN_BUYER,text)      
+      b,groupb = group_by_pattern(self.config.PATTERN_INN_KPP_BUYER,text)      
       if len(groupb)<19:
         # может быть второе вхождение
-        _,groupb = group_by_pattern(self.config.PATTERN_BUYER,text[b+1:])
+        _,groupb = group_by_pattern(self.config.PATTERN_INN_KPP_BUYER,text[b+1:])
         text.pop(b)
     except Exception as e:
       pass
@@ -286,6 +353,60 @@ class SfInfoExtractor:
 
     return text
 
+  def is_eng_sf_num(self, info):
+    if info['seller_inn'] == '6665002150' and info['seller_kpp'] == '660850001':
+      return True
+    return False
+
+  def find_sf_num(self, data, left_break):
+    text, coords = format_text(data, left_break)
+    logger.debug(text)
+    i,group = group_by_pattern(self.config.PATTERN_SF_NUM,text)
+    if len(group)>10:
+      group = group.strip()    
+      left_part_text = group.split(' ')[0]
+      
+      try:
+        idx = find_part_text(data, left_part_text)      
+        left = data['left'][idx]
+        _,top,width,height = coords[i]
+        return [(group,(left,top,width,height))]
+      except: 
+        left,top,width,height = coords[i]
+        return [(group,(left,top,width,height))]
+
+    left, top, width, height = coords[i]
+    idx = [i for i, x in enumerate(coords) if len(text[i]) < 60 and left+width<x[0] and top < x[1]+(x[3]/2) < top + height ]
+    
+    return [(text[i],coords[i]) for i in idx]
+
+
+  def correct_eng_sf_num(self, t):  
+    sf_no = self.config.PATTERN_ENG_DATE_SPLIT.split(t.upper())[0]
+    sf_no = ''.join([x for x in sf_no if x not in ' ' ])
+    sf_no = sf_no.replace('-KJ','-KI').replace('-K1I','-KI').replace('-KI1','-KI').replace('-K1','-KI')
+    return self.correct_sf_num(sf_no)  
+
+  def extract_eng_sf_num(self,head_img):
+    config = '--oem 1 --psm 11'
+    data = ocr_data(head_img,lang='rus',config=config)
+
+    _,w = head_img.shape[:2]
+    left_break = w // 2
+    info = self.find_sf_num(data,left_break)[0]
+    _,(x,y,w,h) = info
+    x -= 4
+    y -= 4
+    w += 8
+    h += 8
+
+    box = head_img[y:y+h, x:x+w]
+
+    config = '--oem 1 --psm 7'
+    sf_num = ocr(box,lang='eng',config=config)
+
+    return self.correct_eng_sf_num(sf_num)        
+  
   def process(self, img):    
     # text = self.text_from_img(img)    
     h,w = img.shape[:2]
@@ -297,7 +418,13 @@ class SfInfoExtractor:
     text = ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')    
 
     try:      
-      info = self.extract_sf_data(text)        
+      info = self.extract_sf_data(text)      
+
+      if self.is_eng_sf_num(info):
+        try:
+          info['sf_no'] = self.extract_eng_sf_num(head_img)  
+        except Exception as e:
+          logger.exception(e)
 
       # если встретилось не заполненное поле
       for k in info.keys():

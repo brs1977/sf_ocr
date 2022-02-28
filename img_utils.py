@@ -153,6 +153,9 @@ def correct_skew3(image, background = (255,255,255)):
   return median_angle, cv2.warpAffine(orig, rot_mat, (int(round(height)), int(round(width))), borderValue=background)
 
 
+def ocr_data(img, lang, config):
+  return pytesseract.image_to_data(img, lang=lang, config=config, output_type=pytesseract.Output.DICT)
+
 def ocr(img, lang, config):
   return pytesseract.image_to_string(img, lang=lang, config=config)
 

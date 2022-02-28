@@ -10,12 +10,73 @@ import numpy as np
 from fitz import fitz, Rect
 from img_utils import *
 
-INDEX_PATTERN = re.compile('_(\d*)')
-
+INDEX_PATTERN   = re.compile('_(\d*)')
+MIN_IMAGE_SIZE  = 600 * 400
 
 def temp_file_name():
     return next(tempfile._get_candidate_names())
 
+def max_page_image(pdf_file, page):
+  # max image by width * height
+  #get_page_images() (xref, smask, width, height, bpc, colorspace, alt. colorspace, name, filter, referencer)
+  images = pdf_file.get_page_images(page)
+  return max(images, key = lambda x: x[2]*x[3] ) 
+
+def pdf_is_text(file_name):  
+  with fitz.open(file_name) as pdf_file:
+    if not pdf_file.isPDF:
+      raise ValueError('File is not pdf') 
+    if len(pdf_file) == 0:
+      raise ValueError('Pdf has not pages') 
+
+    image = max_page_image(pdf_file, 0)
+    if image[2] * image[3] < MIN_IMAGE_SIZE:
+      return True    
+  return False
+
+def pdf_page_text(page):
+    # get text block
+    blocks = page.get_text("blocks")
+    blocks.sort(key=lambda block: block[3])  # sort by 'y1' values
+    text = [ ' '.join(block[4].split()) for block in blocks]
+    return '\n'.join(text)
+
+def pdf_page_text_gen(file_name):
+    with fitz.open(file_name) as pdf_file:
+        pages = len(pdf_file)
+        for page_index in range(pages):
+            page = pdf_file[page_index]
+
+            text = pdf_page_text(page)
+
+            yield text, page_index+1, pages
+
+
+def pdf_page_image_gen(file_name):
+    with fitz.open(file_name) as pdf_file:
+        pages = len(pdf_file)
+        for page_index in range(pages):
+            xref = max_page_image(pdf_file, page_index)[0]
+            image = pdf_file.extract_image(xref)
+
+            yield image, page_index+1, pages
+
+def pdf_image_to_page(pdf_new, img):
+    newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
+    rect = Rect(0, 0, img.shape[1], img.shape[0])
+    img = Image.fromarray(img).convert('RGB')
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='jpeg')
+    newpage.insert_image(rect, stream=img_bytes.getvalue())
+
+def pdf_bytes_to_image(image):
+    image_bytes = image["image"]
+    return np.asarray(Image.open(io.BytesIO(image_bytes)))
+
+def pdf_create_page_file(filename, docsrc, from_page):
+  with fitz.open() as pdf_new:
+    pdf_new.insert_pdf(docsrc, from_page=from_page, to_page=from_page)
+    pdf_new.save(filename, garbage=4, deflate=True)
 
 class PDFSplitter:
     def __init__(self, out_file_name, pdf_file, orient_clf, type_clf, extractor):
@@ -26,39 +87,8 @@ class PDFSplitter:
         self.type_clf = type_clf
         self.extractor = extractor
 
-    
-    def pdf_page_image_gen(self, file_name):
-        with fitz.open(file_name) as pdf_file:
-            pages = len(pdf_file)
-            for page_index in range(pages):
-                page = pdf_file[page_index]
-
-                # # get text block
-                # blocks = page.get_text("blocks")
-                # blocks.sort(key=lambda block: block[3])  # sort by 'y1' values
-                # text = [ ' '.join(block[4].split()) for block in blocks]
-
-                # max image
-                images = [pdf_file.extract_image(img[0]) for img in page.get_images() ]      
-                images.sort(key=lambda img : -img['width']*img['height'] )
-
-                yield images[0], page_index+1, pages
-    
-    
-    def image_to_pdf_page(self, pdf_new, img):
-        newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
-        rect = Rect(0, 0, img.shape[1], img.shape[0])
-        img = Image.fromarray(img).convert('RGB')
-        img_bytes = io.BytesIO()
-        img.save(img_bytes, format='jpeg')
-        newpage.insert_image(rect, stream=img_bytes.getvalue())
-
-    def bytes_to_image(self, image):
-        image_bytes = image["image"]
-        return np.asarray(Image.open(io.BytesIO(image_bytes)))
-
     def preprocess_image(self, image):
-        img = self.bytes_to_image(image)
+        img = pdf_bytes_to_image(image)
 
         gray = to_gray(img)
         h, w = gray.shape
@@ -102,7 +132,7 @@ class PDFSplitter:
         self.files[fn] = fn
         return fn
 
-    def create_pdf(self, tmp_dir, imgs):
+    def pdf_create_file(self, tmp_dir, imgs):
         if not imgs:
             return None
 
@@ -110,7 +140,7 @@ class PDFSplitter:
         # logger.debug(text)
         # logger.debug(info)
 
-        file_name = temp_file_name()  # self._get_file_name(info['sf_no'])
+        file_name = temp_file_name()  
 
         # with open(os.path.join(tmp_dir,file_name+'.json'), 'w') as json_file:
         #   json_file.write(json.dumps(info))
@@ -118,7 +148,7 @@ class PDFSplitter:
         files = []
         for i, img in enumerate(imgs):
             with fitz.open() as pdf_new:
-                self.image_to_pdf_page(pdf_new, img)
+                pdf_image_to_page(pdf_new, img)
                 fn = f'{file_name}-{i+1}.pdf'
                 files.append(fn)
                 pdf_new.save(os.path.join(tmp_dir, fn),
@@ -127,16 +157,17 @@ class PDFSplitter:
         info['files'] = files
         return info
 
-    def process(self):
+    def process_image_pdf(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             results = []
             imgs = []
             is_first = True
-            for image, page, pages in self.pdf_page_image_gen(self.pdf_file):
+            for image, page, pages in pdf_page_image_gen(self.pdf_file):
                 typ, img = self.preprocess_image(image)
 
                 if typ == 1 and not is_first:
-                    info = self.create_pdf(tmp_dir, imgs)
+                    info = self.pdf_create_file(tmp_dir, imgs)
+
                     results.append(info)
                     imgs = []
                     yield page, pages, info
@@ -144,14 +175,54 @@ class PDFSplitter:
                 imgs.append(img)
                 is_first = False
 
-            info = self.create_pdf(tmp_dir, imgs)
+            info = self.pdf_create_file(tmp_dir, imgs)
             results.append(info)
 
             with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
                 json_file.write(json.dumps(results))
 
             # zip
-            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)
-
+            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
             yield page, pages, info
+
+    def process_text_pdf(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            results = []
+            files = []
+            with fitz.open(self.pdf_file) as pdf_file:
+                text = pdf_page_text(pdf_file[0])                
+
+                info = self.extractor.extract_sf_data_from_text_pdf(text)
+
+                file_name = temp_file_name()  
+                pages = len(pdf_file)
+                for page_index in range(pages):                   
+                    fn = f'{file_name}-{page_index+1}.pdf'
+                    files.append(fn)
+                    fn = os.path.join(tmp_dir, fn)
+                    pdf_create_page_file(fn, pdf_file, page_index)
+
+
+                info['files'] = files
+                results.append(info)
+                logger.debug(info)
+
+
+                with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
+                    json_file.write(json.dumps(results))
+
+            # zip
+            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
+            yield 1, 1, info
+
+    def process(self):
+        if pdf_is_text(self.pdf_file):
+            for x in self.process_text_pdf():
+                yield x
+        else:
+            for x in self.process_image_pdf():
+                yield x
+
+
+            
 

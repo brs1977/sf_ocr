@@ -97,7 +97,9 @@ def do_work(id):
 
         splitter = PDFSplitter(zip_file_name, pdf_file_name,
                                app.orient_clf, app.type_clf, app.extractor)
-        for page, pages, info in splitter.process():
+
+        state = get_state(id)
+        for page, pages, info in splitter.process():            
             results.append(info)
             state = {'page': page, 'pages': pages}
             set_state(id, state)

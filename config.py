@@ -6,12 +6,15 @@ class Config:
     with open(file_name, "r") as f:
       data = yaml.safe_load(f)    
 
+    self.PATTERN_SELLER = re.compile('ПРОДАВЕЦ')
+    self.PATTERN_BUYER  = re.compile('ПОКУПАТЕЛЬ')
+
     self.PATTERN_BILL = re.compile(data['bill_template'])    
     self.PATTERN_NOT_SF = re.compile('|'.join(data['not_sf_template']))
 
     self.PATTERN_SF_NUM = re.compile(r'.*?('+'|'.join(data['sf_num_template'])+')(.*)')
-    self.PATTERN_SELLER = re.compile(f".*?([{'|'.join(data['inn_kpp_template'])}] {data['seller_template']})(.*)")
-    self.PATTERN_BUYER  = re.compile(f".*?([{'|'.join(data['inn_kpp_template'])}] {data['buyer_template']})(.*)")
+    self.PATTERN_INN_KPP_SELLER = re.compile(f".*?([{'|'.join(data['inn_kpp_template'])}] {data['seller_template']})(.*)")
+    self.PATTERN_INN_KPP_BUYER  = re.compile(f".*?([{'|'.join(data['inn_kpp_template'])}] {data['buyer_template']})(.*)")
     
     self.MONTH = data['month']
     
@@ -28,5 +31,7 @@ class Config:
     self.TRASH_PATTERN = re.compile(data['trash_template'])
 
     self.PATTERN_TRASH_WORD = re.compile('|'.join(data['trash_word_template']))
+
+    self.PATTERN_ENG_DATE_SPLIT = re.compile('[OT|OR]')
     
     
