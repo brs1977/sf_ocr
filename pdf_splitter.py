@@ -31,6 +31,7 @@ def pdf_is_text(file_name):
 
     image = max_page_image(pdf_file, 0)
     if image[2] * image[3] < MIN_IMAGE_SIZE:
+      logger.debug('Text pdf page')  
       return True    
   return False
 
@@ -191,8 +192,11 @@ class PDFSplitter:
             files = []
             with fitz.open(self.pdf_file) as pdf_file:
                 text = pdf_page_text(pdf_file[0])                
+                
 
-                info = self.extractor.extract_sf_data_from_text_pdf(text)
+                info = self.extractor.extract_sf_data(text)
+                if not info['buyer_inn'] and not info['seller_inn']:
+                    info = self.extractor.extract_sf_data_from_text_pdf(text)
 
                 file_name = temp_file_name()  
                 pages = len(pdf_file)
