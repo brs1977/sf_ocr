@@ -19,8 +19,13 @@ def temp_file_name():
 def max_page_image(pdf_file, page):
   # max image by width * height
   #get_page_images() (xref, smask, width, height, bpc, colorspace, alt. colorspace, name, filter, referencer)
-  images = pdf_file.get_page_images(page)
-  return max(images, key = lambda x: x[2]*x[3] ) 
+#   images = pdf_file.get_page_images(page)
+#   return max(images, key = lambda x: x[2]*x[3] ) 
+
+  images = pdf_file[page].get_image_info(xrefs=True)
+  image = max(images, key = lambda x: x['width']*x['height'] )   
+  return image
+
 
 def pdf_is_text(file_name):  
   with fitz.open(file_name) as pdf_file:
@@ -30,7 +35,7 @@ def pdf_is_text(file_name):
       raise ValueError('Pdf has not pages') 
 
     image = max_page_image(pdf_file, 0)
-    if image[2] * image[3] < MIN_IMAGE_SIZE:
+    if image['width'] * image['height'] < MIN_IMAGE_SIZE:
       logger.debug('Text pdf page')  
       return True    
   return False
@@ -57,7 +62,7 @@ def pdf_page_image_gen(file_name):
     with fitz.open(file_name) as pdf_file:
         pages = len(pdf_file)
         for page_index in range(pages):
-            xref = max_page_image(pdf_file, page_index)[0]
+            xref = max_page_image(pdf_file, page_index)['xref']
             image = pdf_file.extract_image(xref)
 
             yield image, page_index+1, pages
