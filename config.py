@@ -23,7 +23,8 @@ class Config:
     # встретиться буква З В
     PATTERN_DAY = '[\d'+''.join([x for x in data['nums_letter_correct']])+']{1,2}'  
     self.PATTERN_DATE = re.compile('('+PATTERN_DAY+'|\d).(\d{1,2}).?(\d{4}|\d{2})')
-    self.PATTERN_DATE_SEARCH = re.compile(r'(.*?)('+PATTERN_DAY+'[\.|-]\d{1,2}[\.|-](?:\d{4}|\d{2})|'+PATTERN_DAY+'[ |\.]?(?:'+self.PATTERN_MONTH+') ?(?:\d{4}|\d{2}))')
+    
+    self.PATTERN_DATE_SEARCH = re.compile(r'(.*?)('+PATTERN_DAY+'[\./|-]\d{1,2}[\./|-](?:\d{4}|\d{2})|'+PATTERN_DAY+'[ |\.]?(?:'+self.PATTERN_MONTH+') ?(?:\d{4}|\d{2}))')
     self.PATTERN_INN_KPP = re.compile(data['inn_kpp_num_template'])
     self.PATTERN_DATE_SPLIT = re.compile(r'('+self.PATTERN_MONTH+')') 
     self.NUMS_LETTER_CORRECT = data['nums_letter_correct']

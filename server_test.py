@@ -25,6 +25,7 @@ def test_read_main():
     # filename = '/home/rttec/projects/sf_ocr/input/6295ad01-652d-4258-b268-170c9aac0503.pdf' #140
     # filename = 'input/d47caae2-f007-4d1c-a452-3b5163ddc25b.pdf' # text
     # print(filename)
+    filename = 'input/0fc5f911-0f28-456e-8419-5a2a8de25804.pdf'
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}
         response = client.post("/ocr", files=files)
