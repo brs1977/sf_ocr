@@ -116,7 +116,10 @@ class SfInfoExtractor:
     dt = dt.replace('/','.')
 
     dt_split = dt.split('.')
-    if len(dt_split) == 3:
+
+    if len(split_data)==1:
+      return ''
+    elif len(dt_split) == 3:
       d, m, y = dt_split
     elif len(dt_split) == 2:
       d, m = dt_split

@@ -30,14 +30,17 @@ def max_page_image(pdf_file, page):
 def pdf_is_text(file_name):  
   with fitz.open(file_name) as pdf_file:
     if not pdf_file.isPDF:
-      raise ValueError('File is not pdf') 
+        raise ValueError('File is not pdf') 
     if len(pdf_file) == 0:
-      raise ValueError('Pdf has not pages') 
+        raise ValueError('Pdf has not pages') 
+    if len(pdf_file[0].get_image_info(xrefs=True)) == 0:
+        logger.debug('Text pdf page')  
+        return True
 
     image = max_page_image(pdf_file, 0)
     if image['width'] * image['height'] < MIN_IMAGE_SIZE:
-      logger.debug('Text pdf page')  
-      return True    
+        logger.debug('Text pdf page')  
+        return True    
   return False
 
 def pdf_page_text(page):
