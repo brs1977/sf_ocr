@@ -26,7 +26,8 @@ def test_read_main():
     # filename = 'input/d47caae2-f007-4d1c-a452-3b5163ddc25b.pdf' # text
     # print(filename)
     # filename = 'input/0fc5f911-0f28-456e-8419-5a2a8de25804.pdf'
-    filename = 'input/879e9064-600b-4711-8383-006caac9696c.pdf'
+    # filename = 'input/879e9064-600b-4711-8383-006caac9696c.pdf'
+    # filename = 'input/61482eb6-cabd-4429-a796-cddd4d1956a3.pdf'
     
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}

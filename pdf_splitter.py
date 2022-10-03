@@ -199,25 +199,41 @@ class PDFSplitter:
             results = []
             files = []
             with fitz.open(self.pdf_file) as pdf_file:
-                text = pdf_page_text(pdf_file[0])                
-                
-
-                info = self.extractor.extract_sf_data(text)
-                if not info['buyer_inn'] and not info['seller_inn']:
-                    info = self.extractor.extract_sf_data_from_text_pdf(text)
-
-                file_name = temp_file_name()  
+                page_no = 1
                 pages = len(pdf_file)
                 for page_index in range(pages):                   
-                    fn = f'{file_name}-{page_index+1}.pdf'
-                    files.append(fn)
+                    
+                    text = pdf_page_text(pdf_file[page_index])                    
+                    print(self.extractor.config.PATTERN_INN_KPP.search(text.upper()))
+                    # тест 1 страницы документа, со словами инн/кпп
+                    if self.extractor.config.PATTERN_INN_KPP.search(text.upper()):
+                        page_no = 1
+                        file_name = temp_file_name()  
+
+
+                        info = self.extractor.extract_sf_data(text)
+                        try:
+                            if not info['buyer_inn'] and not info['seller_inn']:                            
+                                info = self.extractor.extract_sf_data_from_text_pdf(text)
+                        except Exception as e:
+                            logger.debug(e)
+
+                        
+                        info['files'] = []
+                        results.append(info)
+                        logger.debug(info)
+
+
+                    fn = f'{file_name}-{page_no}.pdf'
+                    info['files'].append(fn)
                     fn = os.path.join(tmp_dir, fn)
                     pdf_create_page_file(fn, pdf_file, page_index)
+                    page_no += 1
 
 
-                info['files'] = files
-                results.append(info)
-                logger.debug(info)
+                # info['files'] = files
+                # results.append(info)
+                # logger.debug(info)
 
 
                 with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
@@ -225,7 +241,8 @@ class PDFSplitter:
 
             # zip
             shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
-            yield 1, 1, info
+            yield pages, pages, info
+
 
     def process(self):
         if pdf_is_text(self.pdf_file):
