@@ -194,6 +194,12 @@ class PDFSplitter:
             shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
             yield page, pages, info
 
+    def is_first_page(self, text):
+        # тест 1 страницы документа, со словами инн/кпп и фактура
+        text = text.upper()
+        return self.extractor.config.PATTERN_INN_KPP.search(text) and  self.extractor.config.PATTERN_SF_NUM.search(text)
+            
+
     def process_text_pdf(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             results = []
@@ -204,9 +210,9 @@ class PDFSplitter:
                 for page_index in range(pages):                   
                     
                     text = pdf_page_text(pdf_file[page_index])                    
-                    print(self.extractor.config.PATTERN_INN_KPP.search(text.upper()))
-                    # тест 1 страницы документа, со словами инн/кпп
-                    if self.extractor.config.PATTERN_INN_KPP.search(text.upper()):
+                    
+                    
+                    if self.is_first_page(text):
                         page_no = 1
                         file_name = temp_file_name()  
 
