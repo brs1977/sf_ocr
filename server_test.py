@@ -42,6 +42,7 @@ def test_read_main():
     # time.sleep(3)
 
     id = data['id']
+    
     response = client.get(f"/progress/{id}")
     data = json.loads(response.text)
 

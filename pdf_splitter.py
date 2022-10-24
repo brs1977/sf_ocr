@@ -204,6 +204,7 @@ class PDFSplitter:
         with tempfile.TemporaryDirectory() as tmp_dir:
             results = []
             files = []
+            info = None
             with fitz.open(self.pdf_file) as pdf_file:
                 page_no = 1
                 pages = len(pdf_file)
@@ -213,6 +214,10 @@ class PDFSplitter:
                     
                     
                     if self.is_first_page(text):
+                        
+                        if info: 
+                            yield page_index+1, pages, info
+
                         page_no = 1
                         file_name = temp_file_name()  
 
@@ -227,9 +232,7 @@ class PDFSplitter:
                         
                         info['files'] = []
                         results.append(info)
-                        logger.debug(info)
-
-                        
+                        logger.debug(info)                        
 
 
                     fn = f'{file_name}-{page_no}.pdf'
@@ -238,7 +241,7 @@ class PDFSplitter:
                     pdf_create_page_file(fn, pdf_file, page_index)
                     page_no += 1
 
-                    yield page_index+1, pages, info
+                    
 
 
                 # info['files'] = files
