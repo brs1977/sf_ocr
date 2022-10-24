@@ -229,12 +229,16 @@ class PDFSplitter:
                         results.append(info)
                         logger.debug(info)
 
+                        
+
 
                     fn = f'{file_name}-{page_no}.pdf'
                     info['files'].append(fn)
                     fn = os.path.join(tmp_dir, fn)
                     pdf_create_page_file(fn, pdf_file, page_index)
                     page_no += 1
+
+                    yield page_index+1, pages, info
 
 
                 # info['files'] = files
