@@ -2,16 +2,14 @@ from glob import glob
 import fitz
 import io
 import os
-import cv2
-import math
 import json
 from PIL import Image
 import numpy as np
 # from google.colab.patches import cv2_imshow
-from skimage.feature import hog, local_binary_pattern
-from fitz import fitz, Rect
-from img_utils import *
-
+# from skimage.feature import hog, local_binary_pattern
+from fitz import Rect
+from img_utils import to_gray, resize, correct_skew3
+from loguru import logger
 
 def img_page_pdf_gen(file_name):  
   with fitz.open(file_name) as pdf_file:      

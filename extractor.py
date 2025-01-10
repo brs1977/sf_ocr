@@ -1,5 +1,7 @@
-from img_utils import *
-import string
+import re
+import cv2
+import numpy as np
+from img_utils import ocr_data, ocr_rus, ocr, dpi, preprocess_image, to_binary, get_contours, to_lines, table_roi, calculate_angle, rotation
 import functools
 from loguru import logger
 
@@ -591,5 +593,5 @@ class SfInfoExtractor:
     # cv2_imshow(head_img)
 
     # ocr
-    return ocr_rus(head_img, config = f'--oem 1 --psm 6')
+    return ocr_rus(head_img, config = '--oem 1 --psm 6')
     # return ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')

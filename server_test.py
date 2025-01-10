@@ -1,18 +1,19 @@
 import os
 import json
-import time
-from fastapi.testclient import TestClient
+# from fastapi.testclient import TestClient
 from server import app
-from concurrent.futures.process import ProcessPoolExecutor
+# from concurrent.futures.process import ProcessPoolExecutor
+from loguru import logger
+from pdf_splitter import PDFSplitter
+import glob
 
-app.state.executor = ProcessPoolExecutor() 
-client = TestClient(app)
+
 
 def read_json(file_name):
     with open(file_name) as f:
         return json.load(f)
 
-def test_read_main():        
+def test_www():        
     test_data = read_json('test_data/256277.json')
     for i,info in enumerate(test_data):
         del info['files']
@@ -59,5 +60,41 @@ def test_read_main():
     response = client.get(f"/progress/{id}")
     # print(response.text)
 
-test_read_main()    
+def split_file(pdf_file_name):
+    try:
+        results = []
+        zip_file_name = os.path.join('./output', os.path.basename(pdf_file_name))
 
+        splitter = PDFSplitter(zip_file_name, pdf_file_name,
+                               app.orient_clf, app.type_clf, app.extractor)
+
+        for page, pages, info in splitter.process():            
+            results.append(info)
+            state = {'page': page, 'pages': pages}
+
+        state['results'] = results
+        state['url'] = f'result/{id}'
+
+    except Exception as e:
+        logger.exception(e)
+        state = {'detail': str(e)}
+
+def split_files(mask):
+    for pdf_file_name in glob.glob(mask):
+        split_file(pdf_file_name)
+
+def test_split():
+    pdf_file_name = './input/ттттттт.pdf'
+    # pdf_file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
+    # # pdf_file_name = './input/1693+1694+02092024.pdf'
+    split_file(pdf_file_name)        
+
+
+if __name__ == '__main__':
+    # app.state.executor = ProcessPoolExecutor() 
+    # client = TestClient(app)
+
+    # test_www()    
+    # test_split()
+    split_files('data/*.pdf')
+    
