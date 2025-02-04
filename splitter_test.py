@@ -1,4 +1,5 @@
 import os
+import io
 import fitz
 from loguru import logger
 
@@ -63,8 +64,26 @@ def pdf_is_text(file_name):
     #    print(pdf_page_text(page))
   return False
 
+def mirror_test(file_name):
+  from PIL import Image
+  with fitz.open(file_name) as pdf_file:
+      pages = len(pdf_file)
+      for page_index in range(pages):
+        images = pdf_file[page_index].get_image_info(xrefs=True)
+        image_info = max(images, key = lambda x: x['width']*x['height'] )
+        xref = image_info['xref']
+        image = pdf_file.extract_image(xref)            
+
+        image_bytes = image["image"]
+        image = Image.open(io.BytesIO(image_bytes))
+        image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        image.save('out.png')
+   
+
 if __name__ == '__main__':
   #  file_name = '.\\input\\1693+1694+02092024.pdf'
   # file_name = './input/ттттттт.pdf'
-  file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
-  print(pdf_is_text(file_name))
+  # file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
+  file_name = './input/390.pdf'
+  # print(pdf_is_text(file_name))
+  mirror_test(file_name)

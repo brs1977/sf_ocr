@@ -81,9 +81,18 @@ def pdf_page_image_gen(file_name, pages_range):
     with fitz.open(file_name) as pdf_file:
         pages = len(pdf_file)
         for page_index in pages_range:
-            xref = max_file_page_image(pdf_file, page_index)['xref']
-            image = pdf_file.extract_image(xref)
+            image_info = max_file_page_image(pdf_file, page_index)
+            xref = image_info['xref']
+            image = pdf_file.extract_image(xref)   
 
+            image_bytes = image["image"]    
+            raw_image = Image.open(io.BytesIO(image_bytes))
+            print(image_info)
+            if 'transform' in image_info.keys() and image_info['transform'][3] < 0: # Проверка на зеркальное отображение TODO надобы image_info['transform'][2] сравнить на -0.0
+                raw_image = raw_image.transpose(Image.FLIP_LEFT_RIGHT)
+                logger.debug('Зеркальное отображение FLIP_LEFT_RIGHT')
+
+            image = np.asarray(raw_image)
             yield image, page_index+1, pages
 
 def pdf_image_to_page(pdf_new, img):
@@ -95,8 +104,9 @@ def pdf_image_to_page(pdf_new, img):
     newpage.insert_image(rect, stream=img_bytes.getvalue())
 
 def pdf_bytes_to_image(image):
-    image_bytes = image["image"]
-    return np.asarray(Image.open(io.BytesIO(image_bytes)))
+    image_bytes = image["image"]    
+    raw_image = Image.open(io.BytesIO(image_bytes))
+    return np.asarray(raw_image)
 
 def pdf_create_page_file(filename, docsrc, from_page):
   with fitz.open() as pdf_new:
@@ -112,9 +122,7 @@ class PDFSplitter:
         self.type_clf = type_clf
         self.extractor = extractor
 
-    def preprocess_image(self, image):
-        img = pdf_bytes_to_image(image)
-
+    def preprocess_image(self, img):        
         gray = to_gray(img)
         h, w = gray.shape
         angle = 0

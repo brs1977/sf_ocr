@@ -84,9 +84,11 @@ def split_files(mask):
         split_file(pdf_file_name)
 
 def test_split():
-    pdf_file_name = './input/ттттттт.pdf'
+    # pdf_file_name = './input/ттттттт.pdf'
     # pdf_file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
     # # pdf_file_name = './input/1693+1694+02092024.pdf'
+    # pdf_file_name = './input/256277.pdf'
+    pdf_file_name = 'input/390.pdf'
     split_file(pdf_file_name)        
 
 
@@ -95,6 +97,6 @@ if __name__ == '__main__':
     # client = TestClient(app)
 
     # test_www()    
-    # test_split()
-    split_files('data/*.pdf')
+    test_split()
+    # split_files('data/390.pdf')
     
