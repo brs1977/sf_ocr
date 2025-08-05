@@ -1,5 +1,7 @@
-from img_utils import *
-import string
+import re
+import cv2
+import numpy as np
+from img_utils import ocr_data, ocr_rus, ocr, dpi, preprocess_image, to_binary, get_contours, to_lines, table_roi, calculate_angle, rotation
 import functools
 from loguru import logger
 
@@ -87,7 +89,7 @@ class SfInfoExtractor:
     self.config = config
 
   @logger_wraps()
-  def extract_date(self, dt):  
+  def extract_date(self, dt):      
     def to_date(d,m,y):
       for x in self.config.NUMS_LETTER_CORRECT:
         d = d.replace(x,str(self.config.NUMS_LETTER_CORRECT[x]))
@@ -101,7 +103,7 @@ class SfInfoExtractor:
     
     res = self.config.PATTERN_DATE_SEARCH.search(dt)
     dt = res.groups()[1] if res else dt
-    split_data = self.config.PATTERN_DATE_SPLIT.split(dt)
+    split_data = self.config.PATTERN_DATE_SPLIT.split(dt)    
 
     if len(split_data)==1 and len(split_data[0])>10:
       return ''
@@ -115,9 +117,8 @@ class SfInfoExtractor:
     dt = dt.replace('-','.')
     dt = dt.replace('/','.')
 
-    dt_split = dt.split('.')
-
-    if len(split_data)==1:
+    dt_split = dt.split('.')    
+    if len(dt_split)==1:
       return ''
     elif len(dt_split) == 3:
       d, m, y = dt_split
@@ -591,5 +592,5 @@ class SfInfoExtractor:
     # cv2_imshow(head_img)
 
     # ocr
-    return ocr_rus(head_img, config = f'--oem 1 --psm 6')
+    return ocr_rus(head_img, config = '--oem 1 --psm 6')
     # return ocr_rus(head_img, config = f'--oem 1 --psm 11 --dpi {d}')

@@ -1,0 +1,44 @@
+[project]
+name = "sf-ocr"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "r.bukin", email = "r.bukin@gmail.com" }
+]
+dependencies = [
+    "opencv-python",
+    "Pillow",
+    "scikit-learn==0.22.2.post1",
+    "scikit-image",
+    "pytesseract==0.3.9",
+    "loguru>=0.7.2",
+    "PyMuPDF==1.19.1",
+    "pyyaml>=6.0.2",
+    "fastapi>=0.115.0",
+    "aiofiles>=24.1.0",
+    "pandas>=2.0.3",
+    "tqdm>=4.66.5",
+    "httpx>=0.28.1",
+    "numpy==1.21.3",
+    "python-multipart>=0.0.20",
+]
+
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[project.scripts]
+hello = "sf_ocr:hello"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sf_ocr"]

@@ -4,11 +4,15 @@ import fitz
 import io
 import re
 import os
+import cv2
 import json
-from PIL import Image
+from loguru import logger
+from PIL import Image, ImageOps
 import numpy as np
-from fitz import fitz, Rect
-from img_utils import *
+from fitz import Rect
+from img_utils import to_gray, resize, correct_skew3
+import string
+import random
 
 INDEX_PATTERN   = re.compile('_(\d*)')
 MIN_IMAGE_SIZE  = 600 * 400
@@ -16,7 +20,7 @@ MIN_IMAGE_SIZE  = 600 * 400
 def temp_file_name():
     return next(tempfile._get_candidate_names())
 
-def max_page_image(pdf_file, page):
+def max_file_page_image(pdf_file, page):
   # max image by width * height
   #get_page_images() (xref, smask, width, height, bpc, colorspace, alt. colorspace, name, filter, referencer)
 #   images = pdf_file.get_page_images(page)
@@ -26,6 +30,21 @@ def max_page_image(pdf_file, page):
   image = max(images, key = lambda x: x['width']*x['height'] )   
   return image
 
+def max_page_image(page):
+  images = page.get_image_info(xrefs=True)
+  image = max(images, key = lambda x: x['width']*x['height'] )   
+  return image
+
+def is_text_page(page):
+    if len(page.get_image_info(xrefs=True)) == 0:
+        logger.debug('Text pdf page')  
+        return True
+
+    image = max_page_image(page)
+    if image['width'] * image['height'] < MIN_IMAGE_SIZE:
+        logger.debug('Text pdf page')  
+        return True    
+    return False
 
 def pdf_is_text(file_name):  
   with fitz.open(file_name) as pdf_file:
@@ -37,7 +56,7 @@ def pdf_is_text(file_name):
         logger.debug('Text pdf page')  
         return True
 
-    image = max_page_image(pdf_file, 0)
+    image = max_file_page_image(pdf_file, 0)
     if image['width'] * image['height'] < MIN_IMAGE_SIZE:
         logger.debug('Text pdf page')  
         return True    
@@ -61,14 +80,20 @@ def pdf_page_text_gen(file_name):
             yield text, page_index+1, pages
 
 
-def pdf_page_image_gen(file_name):
+def pdf_page_image_gen(file_name, pages_range):
     with fitz.open(file_name) as pdf_file:
         pages = len(pdf_file)
-        for page_index in range(pages):
-            xref = max_page_image(pdf_file, page_index)['xref']
-            image = pdf_file.extract_image(xref)
+        for page_index in pages_range:
+            # xref = max_file_page_image(pdf_file, page_index)['xref']
+            # image = pdf_file.extract_image(xref)
+            matrix = fitz.Matrix(2.0, 2.0)
+            image = pdf_file[page_index].get_pixmap(matrix=matrix)            
 
             yield image, page_index+1, pages
+
+def save_image(filename, img_array):
+    img = Image.fromarray(img_array).convert('RGB')
+    img.save(filename,format='jpeg')
 
 def pdf_image_to_page(pdf_new, img):
     newpage = pdf_new.new_page(-1, width=img.shape[1], height=img.shape[0])
@@ -79,13 +104,51 @@ def pdf_image_to_page(pdf_new, img):
     newpage.insert_image(rect, stream=img_bytes.getvalue())
 
 def pdf_bytes_to_image(image):
-    image_bytes = image["image"]
-    return np.asarray(Image.open(io.BytesIO(image_bytes)))
+    img_data = image["image"]
+    img = Image.open(io.BytesIO(img_data))
+    
+    # Инвертируем все бинарные изображения (1 бит на пиксель)
+    if image.get('bpc', 0) == 1:
+        # Проверяем цветовое пространство (числовое или строковое)
+        colorspace = image.get('colorspace')
+        is_grayscale = (colorspace in [1, 'DeviceGray', 'Gray']) or (isinstance(colorspace, int) and colorspace == 1)
+        
+        print("Режим изображения:", img.mode)
+        print("Уникальные значения:", np.unique(np.asarray(img)))
+
+        if is_grayscale and img.mode in {'L', '1'}:
+            img = ImageOps.invert(img)
+    
+    # Конвертируем бинарные изображения в 8-битные серые
+    if img.mode == '1':
+        img = img.convert('L')
+    
+    return np.asarray(img)
+
+
+    # image_bytes = image["image"]
+    # return np.asarray(Image.open(io.BytesIO(image_bytes)))
 
 def pdf_create_page_file(filename, docsrc, from_page):
   with fitz.open() as pdf_new:
     pdf_new.insert_pdf(docsrc, from_page=from_page, to_page=from_page)
     pdf_new.save(filename, garbage=4, deflate=True)
+
+
+def generate_filename(extension='.jpg', length=3):
+    chars = string.ascii_letters + string.digits
+    name = ''.join(random.choice(chars) for _ in range(length))
+    return name + extension
+
+def pdf_pix_to_image(pix):
+    # Преобразуем в numpy массив с нужной формой
+    img = np.frombuffer(pix.samples, dtype=np.uint8)
+    img = img.reshape(pix.height, pix.width, pix.n)
+
+    # Если надо убрать альфа-канал (если есть)
+    if pix.n == 4:
+        img = img[:, :, :3]  # Оставляем только RGB        
+    return img
 
 class PDFSplitter:
     def __init__(self, out_file_name, pdf_file, orient_clf, type_clf, extractor):
@@ -97,7 +160,11 @@ class PDFSplitter:
         self.extractor = extractor
 
     def preprocess_image(self, image):
-        img = pdf_bytes_to_image(image)
+        # img = pdf_bytes_to_image(image)
+        img = pdf_pix_to_image(image)
+        
+        # save_image(generate_filename(), img)
+        # logger.debug(('process image shape:',img.shape))
 
         gray = to_gray(img)
         h, w = gray.shape
@@ -118,7 +185,7 @@ class PDFSplitter:
 
         img = np.rot90(img, angle//90)
         _, img = correct_skew3(img)
-
+        # save_image(generate_filename(), img)
         return typ, img
 
     def _get_file_name(self, fn):
@@ -166,17 +233,18 @@ class PDFSplitter:
         info['files'] = files
         return info
 
-    def process_image_pdf(self):
+    def process_image_pdf(self, pages_range):
         with tempfile.TemporaryDirectory() as tmp_dir:
             results = []
             imgs = []
             is_first = True
-            for image, page, pages in pdf_page_image_gen(self.pdf_file):
+            for image, page, pages in pdf_page_image_gen(self.pdf_file, pages_range):                
                 typ, img = self.preprocess_image(image)
+                logger.debug(('page:',page,'type:',typ))                
 
                 if typ == 1 and not is_first:
                     info = self.pdf_create_file(tmp_dir, imgs)
-
+                    print(('page:',page,'type:',typ, info))
                     results.append(info)
                     imgs = []
                     yield page, pages, info
@@ -185,6 +253,7 @@ class PDFSplitter:
                 is_first = False
 
             info = self.pdf_create_file(tmp_dir, imgs)
+            print(('page:',page,'type:',typ, info))
             results.append(info)
 
             with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
@@ -200,15 +269,14 @@ class PDFSplitter:
         return self.extractor.config.PATTERN_INN_KPP.search(text) and  self.extractor.config.PATTERN_SF_NUM.search(text)
             
 
-    def process_text_pdf(self):
+    def process_text_pdf(self, pages_range):
         with tempfile.TemporaryDirectory() as tmp_dir:
             results = []
-            files = []
             info = None
             with fitz.open(self.pdf_file) as pdf_file:
                 page_no = 1
                 pages = len(pdf_file)
-                for page_index in range(pages):                   
+                for page_index in pages_range:
                     
                     text = pdf_page_text(pdf_file[page_index])                    
                     
@@ -256,14 +324,40 @@ class PDFSplitter:
             shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
             yield pages, pages, info
 
-
     def process(self):
-        if pdf_is_text(self.pdf_file):
-            for x in self.process_text_pdf():
+
+
+        with fitz.open(self.pdf_file) as pdf_file:
+            if not pdf_file.isPDF:
+                raise ValueError('File is not pdf') 
+            if len(pdf_file) == 0:
+                raise ValueError('Pdf has not pages') 
+
+            pages = len(pdf_file)
+            text_pages_range = []
+            image_pages_range = []
+            for page_index in range(pages):
+                if is_text_page(pdf_file[page_index]):
+                    text_pages_range.append(page_index)
+                else:
+                    image_pages_range.append(page_index)
+
+        # print(len(text_pages_range), text_pages_range)
+        # print(len(image_pages_range), image_pages_range)
+        if text_pages_range:
+            for x in self.process_text_pdf(text_pages_range):
                 yield x
-        else:
-            for x in self.process_image_pdf():
+        if image_pages_range:
+            for x in self.process_image_pdf(image_pages_range):
                 yield x
+
+
+        # if pdf_is_text(self.pdf_file):
+        #     for x in self.process_text_pdf(text_pages_range):
+        #         yield x
+        # else:
+        #     for x in self.process_image_pdf(image_pages_range):
+        #         yield x
 
 
             
