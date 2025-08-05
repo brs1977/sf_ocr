@@ -68,11 +68,11 @@ def test_split():
         # pdf_file_name = './input/с-ф 1.pdf'
         # zip_file_name = './output/с-ф 1.zip'
 
-        pdf_file_name = './input/ЦР-933.pdf' # не правильно определяет 2ю страницу инверсия
-        zip_file_name = './output/ЦР-933.zip'
+        pdf_file_name = './input/6676.pdf' 
+        zip_file_name = './output/6676'
 
-        pdf_file_name = './input/873b6d73-8705-4f8f-8ae8-8bc4dd08d43e.pdf' # не правильно определяет 2ю страницу 
-        zip_file_name = './output/873b6d73-8705-4f8f-8ae8-8bc4dd08d43e.zip'
+        # pdf_file_name = './input/9ec631f1-1345-4fa7-83d3-c17f5997629c.pdf' 
+        # zip_file_name = './output/9ec631f1-1345-4fa7-83d3-c17f5997629c'
 
         splitter = PDFSplitter(zip_file_name, pdf_file_name,
                                app.orient_clf, app.type_clf, app.extractor)
