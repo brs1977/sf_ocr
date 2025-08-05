@@ -5,6 +5,10 @@ from server import app
 # from concurrent.futures.process import ProcessPoolExecutor
 from loguru import logger
 from pdf_splitter import PDFSplitter
+<<<<<<< HEAD
+=======
+import glob
+>>>>>>> b4cdc025796462e22d6062b5f404926a74f8ba52
 
 
 
@@ -59,20 +63,10 @@ def test_www():
     response = client.get(f"/progress/{id}")
     # print(response.text)
 
-def test_split():
+def split_file(pdf_file_name):
     try:
         results = []
-        # pdf_file_name = './input/ттттттт.pdf'
-        # zip_file_name = './output/ттттттт.zip'
-
-        # pdf_file_name = './input/с-ф 1.pdf'
-        # zip_file_name = './output/с-ф 1.zip'
-
-        pdf_file_name = './input/6676.pdf' 
-        zip_file_name = './output/6676'
-
-        # pdf_file_name = './input/9ec631f1-1345-4fa7-83d3-c17f5997629c.pdf' 
-        # zip_file_name = './output/9ec631f1-1345-4fa7-83d3-c17f5997629c'
+        zip_file_name = os.path.join('./output', os.path.basename(pdf_file_name))
 
         splitter = PDFSplitter(zip_file_name, pdf_file_name,
                                app.orient_clf, app.type_clf, app.extractor)
@@ -88,6 +82,17 @@ def test_split():
         logger.exception(e)
         state = {'detail': str(e)}
 
+def split_files(mask):
+    for pdf_file_name in glob.glob(mask):
+        split_file(pdf_file_name)
+
+def test_split():
+    # pdf_file_name = './input/ттттттт.pdf'
+    # pdf_file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
+    # # pdf_file_name = './input/1693+1694+02092024.pdf'
+    # pdf_file_name = './input/256277.pdf'
+    pdf_file_name = 'input/390.pdf'
+    split_file(pdf_file_name)        
 
 if __name__ == '__main__':
     # app.state.executor = ProcessPoolExecutor() 
@@ -95,6 +100,4 @@ if __name__ == '__main__':
 
     # test_www()    
     test_split()
-# [{"sf_no": "265", "sf_date": "28.01.2625", "buyer_inn": null, "buyer_kpp": null, "seller_inn": null, "seller_kpp": null, "files": ["d56owumq-1.pdf"]}, 
-#  {"sf_no": "5776", "sf_date": "27.12.2024", "buyer_inn": "7714077682", "buyer_kpp": "771401001", "seller_inn": "7611023357", "seller_kpp": "761101001", "files": ["w_kh8tk2-1.pdf", "w_kh8tk2-2.pdf"]}, 
-#  {"sf_no": "83", "sf_date": "16.01.2025", "buyer_inn": "7730239877", "buyer_kpp": "330543001", "seller_inn": "7611023357", "seller_kpp": "761101001", "files": ["smavv7lx-1.pdf", "smavv7lx-2.pdf", "smavv7lx-3.pdf", "smavv7lx-4.pdf"]}]
+    # split_files('data/390.pdf')

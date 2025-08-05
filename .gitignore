@@ -1,5 +1,5 @@
 /.vscode
-/__pycache__
+**/__pycache__
 /trash
 /build
 /public
@@ -13,7 +13,8 @@
 /ocr.pyx
 /ocr.spec
 /output
-/venv
+/.venv
+/data
 test.py
 server1.py
 server2.py
@@ -26,3 +27,5 @@ imgs.zip
 img_ds2.zip
 img_ds1.zip
 logs.txt
+0abe7194-16a0-44bb-a0a4-36c976830035.zip
+08a45512-3a1f-46e1-a038-3a4846fccb7c.zip

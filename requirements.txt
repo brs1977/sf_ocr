@@ -7,7 +7,6 @@ scikit-image
 sklearn
 pytesseract
 loguru
-PyMuPDF==1.19.1
 pyyaml
 # pyinstaller
 # pysqlite3
