@@ -6,51 +6,6 @@
 #   features: []
 #   all-features: false
 #   with-sources: false
-<<<<<<< HEAD
-
--e file:.
-aiofiles==24.1.0
-annotated-types==0.7.0
-anyio==4.5.2
-certifi==2024.12.14
-colorama==0.4.6
-exceptiongroup==1.2.2
-fastapi==0.115.6
-h11==0.14.0
-httpcore==1.0.7
-httpx==0.28.1
-idna==3.10
-imageio==2.35.1
-joblib==1.4.2
-lazy-loader==0.4
-loguru==0.7.3
-networkx==3.1
-numpy==1.21.3
-opencv-python==4.10.0.84
-packaging==24.2
-pandas==2.0.3
-pillow==10.4.0
-pydantic==2.10.4
-pydantic-core==2.27.2
-pymupdf==1.19.1
-pytesseract==0.3.13
-python-dateutil==2.9.0.post0
-python-multipart==0.0.20
-pytz==2024.2
-pywavelets==1.4.1
-pyyaml==6.0.2
-scikit-image==0.21.0
-scikit-learn==0.22.2.post1
-scipy==1.10.1
-six==1.17.0
-sniffio==1.3.1
-starlette==0.41.3
-tifffile==2023.7.10
-tqdm==4.67.1
-typing-extensions==4.12.2
-tzdata==2024.2
-win32-setctime==1.2.0
-=======
 #   generate-hashes: false
 #   universal: false
 
@@ -129,4 +84,3 @@ typing-extensions==4.12.2
     # via pydantic-core
 win32-setctime==1.2.0
     # via loguru
->>>>>>> b4cdc025796462e22d6062b5f404926a74f8ba52

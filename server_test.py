@@ -5,10 +5,7 @@ from server import app
 # from concurrent.futures.process import ProcessPoolExecutor
 from loguru import logger
 from pdf_splitter import PDFSplitter
-<<<<<<< HEAD
-=======
 import glob
->>>>>>> b4cdc025796462e22d6062b5f404926a74f8ba52
 
 
 
@@ -91,6 +88,7 @@ def test_split():
     # pdf_file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
     # # pdf_file_name = './input/1693+1694+02092024.pdf'
     # pdf_file_name = './input/256277.pdf'
+    pdf_file_name = 'input/6676.pdf'
     pdf_file_name = 'input/390.pdf'
     split_file(pdf_file_name)        
 

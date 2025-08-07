@@ -6,31 +6,6 @@ authors = [
     { name = "r.bukin", email = "r.bukin@gmail.com" }
 ]
 dependencies = [
-<<<<<<< HEAD
-    "opencv-python",
-    "Pillow",
-    "scikit-learn==0.22.2.post1",
-    "scikit-image",
-    "pytesseract==0.3.9",
-    "loguru>=0.7.2",
-    "PyMuPDF==1.19.1",
-    "pyyaml>=6.0.2",
-    "fastapi>=0.115.0",
-    "aiofiles>=24.1.0",
-    "pandas>=2.0.3",
-    "tqdm>=4.66.5",
-    "httpx>=0.28.1",
-    "numpy==1.21.3",
-    "python-multipart>=0.0.20",
-]
-
-readme = "README.md"
-requires-python = ">= 3.8"
-
-[project.scripts]
-hello = "sf_ocr:hello"
-
-=======
     "fastapi>=0.115.6",
     "opencv-python>=4.10.0.84",
     "pymupdf>=1.25.1",
@@ -42,23 +17,24 @@ hello = "sf_ocr:hello"
     "pyyaml>=6.0.2",
     "scikit-learn>=1.6.0",
     "python-multipart>=0.0.20",
-    "uvicorn>=0.34.0",
+    "uvicorn>=0.34.0"
 ]
-readme = "README.md"
-requires-python = ">= 3.8"
 
->>>>>>> b4cdc025796462e22d6062b5f404926a74f8ba52
+readme = "README.md"
+requires-python = ">= 3.12"
+
+[project.scripts]
+hello = "sf_ocr:hello"
+
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-<<<<<<< HEAD
 [tool.rye]
 managed = true
 dev-dependencies = []
 
-=======
->>>>>>> b4cdc025796462e22d6062b5f404926a74f8ba52
 [tool.hatch.metadata]
 allow-direct-references = true
 
