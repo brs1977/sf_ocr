@@ -89,7 +89,8 @@ def test_split():
     # # pdf_file_name = './input/1693+1694+02092024.pdf'
     # pdf_file_name = './input/256277.pdf'
     pdf_file_name = 'input/6676.pdf'
-    pdf_file_name = 'input/390.pdf'
+    pdf_file_name = 'input/ЦО.pdf'
+    # pdf_file_name = 'input/ттттттт.pdf'
     split_file(pdf_file_name)        
 
 if __name__ == '__main__':

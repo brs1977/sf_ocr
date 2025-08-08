@@ -102,7 +102,7 @@ inn_kpp_template:
 
 
 seller_template: ПРОДАВ[Ц|И|Н]А:?
-buyer_template: ПОКУ[П|Л]АТЕЛЯ:?
+buyer_template: ПОКУ[П|Л]АТЕЛ[Я|;]?:?
 
 bill_template: СЧЕТ|СЧЁТ
 
