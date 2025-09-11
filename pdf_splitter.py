@@ -86,7 +86,7 @@ def pdf_page_image_gen(file_name, pages_range):
         for page_index in pages_range:
             # xref = max_file_page_image(pdf_file, page_index)['xref']
             # image = pdf_file.extract_image(xref)
-            matrix = fitz.Matrix(2.0, 2.0)
+            matrix = fitz.Matrix(2.5, 2.5)
             image = pdf_file[page_index].get_pixmap(matrix=matrix)            
 
             # image_bytes = image["image"]    
