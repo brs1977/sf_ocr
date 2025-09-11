@@ -293,9 +293,30 @@ class PDFSplitter:
                     
                     
                     if self.is_first_page(text):
-                        
                         if info: 
                             yield page_index+1, pages, info
+
+                        page_no = 1
+                        file_name = temp_file_name()  
+
+                        info = self.extractor.extract_sf_data(text)
+                        try:
+                            if not info['buyer_inn'] and not info['seller_inn']:                            
+                                info = self.extractor.extract_sf_data_from_text_pdf(text)
+                        except Exception as e:
+                            logger.debug(e)
+                        
+                        info['files'] = []                        
+
+
+                    fn = f'{file_name}-{page_no}.pdf'
+                    info['files'].append(fn)
+                    logger.debug(info)
+                    results.append(info)
+                    fn = os.path.join(tmp_dir, fn)
+                    pdf_create_page_file(fn, pdf_file, page_index)
+                    page_no += 1
+
 
             with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
                 json_file.write(json.dumps(results))

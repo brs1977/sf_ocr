@@ -61,6 +61,7 @@ def test_www():
     # print(response.text)
 
 def split_file(pdf_file_name):
+    state = {}
     try:
         results = []
         zip_file_name = os.path.join('./output', os.path.basename(pdf_file_name))
@@ -90,6 +91,7 @@ def test_split():
     # pdf_file_name = './input/256277.pdf'
     pdf_file_name = 'input/6676.pdf'
     pdf_file_name = 'input/390.pdf'
+    pdf_file_name = 'input/СчетаФактурыТД авг 2025.pdf'
     split_file(pdf_file_name)        
 
 if __name__ == '__main__':
