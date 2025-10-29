@@ -21,7 +21,7 @@ def test_www():
 
 
 
-    filename = 'input/256277.pdf'
+    # filename = 'input/256277.pdf'
     # filename = 'input/256611.pdf'
     # filename = 'input/e70e638e-0981-4bda-8515-ee75c25a812e.pdf' # 30 pic 
     # filename = '/home/rttec/projects/sf_ocr/input/6295ad01-652d-4258-b268-170c9aac0503.pdf' #140
@@ -32,6 +32,7 @@ def test_www():
     # filename = 'input/61482eb6-cabd-4429-a796-cddd4d1956a3.pdf'
     # filename = 'input/559c6ca1-e0b3-4a11-91b2-7084fd14a14c.pdf'
     # filename = 'input/7d1a7165-5e6c-4d6e-b87a-d0cc306ff4b4.pdf'
+    filename = "input\902513998.pdf"
     
     with open(filename, mode='rb') as test_file:
         files = {"file": (os.path.basename(filename), test_file, "application/pdf")}
@@ -92,6 +93,8 @@ def test_split():
     pdf_file_name = 'input/6676.pdf'
     pdf_file_name = 'input/390.pdf'
     pdf_file_name = 'input/СчетаФактурыТД авг 2025.pdf'
+    # pdf_file_name = "input/902513998.pdf"
+    pdf_file_name = "input/100019757.pdf"
     split_file(pdf_file_name)        
 
 if __name__ == '__main__':

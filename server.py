@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 from concurrent.futures.process import ProcessPoolExecutor
 from http import HTTPStatus
 from io import BytesIO
@@ -20,6 +21,7 @@ import asyncio
 import json
 import pickle
 import re
+
 
 import aiofiles
 from fastapi import (BackgroundTasks, FastAPI, File, HTTPException, Request,
@@ -48,19 +50,34 @@ app.orient_clf = load_model('models/orient.pkl')
 app.type_clf = load_model('models/type.pkl')
 
 
-app.lock = Lock()
-
+# app.lock = Lock()
+app.lock = threading.Lock()
 
 def del_state(id):
     with app.lock:
         os.remove(os.path.join(app.file_path, f'{id}.pkl'))
 
 
-def set_state(id, state):
-    with app.lock:
-        with open(os.path.join(app.file_path, f'{id}.pkl'), 'wb') as f:
-            pickle.dump(state, f)
+# def set_state(id, state):
+#     with app.lock:
+#         with open(os.path.join(app.file_path, f'{id}.pkl'), 'wb') as f:
+#             pickle.dump(state, f)
 
+def set_state(id, new_state):
+    with app.lock:
+        file_path = os.path.join(app.file_path, f'{id}.pkl')
+        # Считаем текущее состояние из файла, если есть
+        try:
+            with open(file_path, 'rb') as f:
+                current_state = pickle.load(f)
+        except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+            current_state = {'page': 0, 'pages': 0}
+
+        # Обновляем состояние только если новое впереди текущего
+        if (new_state.get('page', 0) > current_state.get('page', 0) or
+            new_state.get('pages', 0) > current_state.get('pages', 0)):
+            with open(file_path, 'wb') as f:
+                pickle.dump(new_state, f)
 
 def get_state(id):
     with app.lock:

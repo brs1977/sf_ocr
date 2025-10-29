@@ -330,13 +330,12 @@ class PDFSplitter:
         with fitz.open(self.pdf_file) as pdf_file:
             if not pdf_file.is_pdf:
                 raise ValueError('File is not pdf') 
-            if len(pdf_file) == 0:
+            if pdf_file.page_count == 0:
                 raise ValueError('Pdf has not pages') 
 
-            pages = len(pdf_file)
             text_pages_range = []
             image_pages_range = []
-            for page_index in range(pages):
+            for page_index in range(pdf_file.page_count):
                 if is_text_page(pdf_file[page_index]):
                     text_pages_range.append(page_index)
                 else:

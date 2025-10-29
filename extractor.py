@@ -41,7 +41,10 @@ def group_by_pattern(pattern,text,s=0):
   for i,t in enumerate(text[s:]):
     grp = pattern.findall(text[s+i].upper())
     if grp:
-      return i+s, grp[0][1]
+      if grp[0][1]:
+        return i+s, grp[0][1]
+      else: # если номер стоит впереди 
+        return i+s, t
   raise LookupError  
 
 def format_text(details, left_break):

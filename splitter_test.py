@@ -68,5 +68,6 @@ if __name__ == '__main__':
   #  file_name = '.\\input\\1693+1694+02092024.pdf'
   # file_name = './input/ттттттт.pdf'
   file_name = './input/2025+2024+2023+2022+2038+2031+2030+2029+2028+2027+2026+2035+20_12.pdf'
+  file_name = "input\902513998.pdf"
   print(pdf_is_text(file_name))
 
