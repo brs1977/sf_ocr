@@ -209,8 +209,8 @@ async def run_in_process(fn, *args):
 
 
 async def cpu_bound_task(id: str) -> None:
-    state = await run_in_process(do_work, id)
-    set_state(id, state)
+    await run_in_process(do_work, id)
+    
 
 
 @app.post("/ocr", status_code=HTTPStatus.ACCEPTED)
@@ -224,7 +224,8 @@ async def ocr(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     out_file_name = f"output/{id}.pdf"
     async with aiofiles.open(out_file_name, 'wb') as out_file:
         content = await file.read()  # async read
-        await out_file.write(content)  # async write
+        state = await out_file.write(content)  # async write
+        set_state(id, state)
 
     background_tasks.add_task(cpu_bound_task, id)
     return JSONResponse({"id": id})
