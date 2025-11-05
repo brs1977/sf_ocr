@@ -58,7 +58,7 @@ app.type_clf = load_model('models/type.pkl')
 
 def del_state(id):
     state_file = os.path.join(FILE_PATH, f'{id}.pkl')
-    if not state_file.exists():
+    if not os.path.exists(state_file):
         raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
     
     with open(state_file, "rb") as f:        
@@ -96,7 +96,7 @@ def set_state(id: str, new_state: dict):
         fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
         try:
             # Загружаем текущее состояние (если файл существует)
-            if state_file.exists():
+            if not os.path.exists(state_file):
                 try:
                     with open(state_file, "rb") as f:
                         current_state = pickle.load(f)
@@ -115,7 +115,7 @@ def set_state(id: str, new_state: dict):
 
 def get_state(id):
     state_file = os.path.join(FILE_PATH, f'{id}.pkl')
-    if not state_file.exists():
+    if not os.path.exists(state_file):
         raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
     with open(state_file, "rb") as f:
         return pickle.load(f)
