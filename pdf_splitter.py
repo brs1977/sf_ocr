@@ -314,6 +314,7 @@ class PDFSplitter:
                     fn = f'{file_name}-{page_no}.pdf'
                     info['files'].append(fn)
                     logger.debug(info)
+                    yield idx+1, pages, info
                     results.append(info)
                     fn = os.path.join(tmp_dir, fn)
                     pdf_create_page_file(fn, pdf_file, page_index)
