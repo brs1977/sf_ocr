@@ -286,15 +286,16 @@ class PDFSplitter:
             info = None
             with fitz.open(self.pdf_file) as pdf_file:
                 page_no = 1
-                pages = len(pdf_file)
-                for page_index in pages_range:
+                # pages = len(pdf_file)
+                pages = len(pages_range)
+                for idx, page_index in enumerate(pages_range):
                     
                     text = pdf_page_text(pdf_file[page_index])                    
                     
                     
                     if self.is_first_page(text):
                         if info: 
-                            yield page_index+1, pages, info
+                            yield idx+1, pages, info
 
                         page_no = 1
                         file_name = temp_file_name()  
