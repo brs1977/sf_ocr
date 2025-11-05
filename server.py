@@ -91,7 +91,7 @@ def del_state(id):
 def set_state(id: str, new_state: dict):
     state_file = os.path.join(FILE_PATH, f'{id}.pkl')
     lock_file = os.path.join(FILE_PATH, f'{id}.lock')
-    logger.debug([id, new_state])
+    logger.debug(["set_state", id, new_state])
 
     with open(lock_file, "w") as lf:
         fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
@@ -207,7 +207,7 @@ def do_work(id):
 async def run_in_process(fn, *args):
     loop = asyncio.get_event_loop()
     state = await loop.run_in_executor(app.state.executor, fn, *args)
-    logger.debug([run_in_process, state])
+    logger.debug(["run_in_process", state])
     set_state(id, state)
 
 

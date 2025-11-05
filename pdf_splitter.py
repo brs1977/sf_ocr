@@ -293,8 +293,9 @@ class PDFSplitter:
                     text = pdf_page_text(pdf_file[page_index])                    
                     
                     
-                    if self.is_first_page(text):
+                    if self.is_first_page(text):                        
                         if info: 
+                            logger.debug(["process_text_pdf", idx+1, pages])
                             yield idx+1, pages, info
 
                         page_no = 1
