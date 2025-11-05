@@ -1,5 +1,7 @@
 import os
 import sys
+import fcntl
+import Path
 import threading
 from concurrent.futures.process import ProcessPoolExecutor
 from http import HTTPStatus
@@ -44,18 +46,23 @@ app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
 app.file_path = 'output'
+FILE_PATH = Path("output").resolve() 
 config = Config('models/config.yaml')
 app.extractor = SfInfoExtractor(config)
 app.orient_clf = load_model('models/orient.pkl')
 app.type_clf = load_model('models/type.pkl')
 
 
-app.lock = Lock()
+# app.lock = Lock()
 # app.lock = threading.Lock()
 
 def del_state(id):
-    with app.lock:
-        os.remove(os.path.join(app.file_path, f'{id}.pkl'))
+    state_file = os.path.join(FILE_PATH, f'{id}.pkl')
+    if not state_file.exists():
+        raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
+    
+    with open(state_file, "rb") as f:        
+        os.remove(state_file)
 
 
 # def set_state(id, state):
@@ -63,28 +70,55 @@ def del_state(id):
 #         with open(os.path.join(app.file_path, f'{id}.pkl'), 'wb') as f:
 #             pickle.dump(state, f)
 
-def set_state(id, new_state):
-    with app.lock:
-        file_path = os.path.join(app.file_path, f'{id}.pkl')
-        # Считаем текущее состояние из файла, если есть
-        try:
-            with open(file_path, 'rb') as f:
-                current_state = pickle.load(f)
-        except (FileNotFoundError, EOFError, pickle.UnpicklingError):
-            current_state = {'page': 0, 'pages': 0}
+# def set_state(id, new_state):
+#     state_file = os.path.join(FILE_PATH, f'{id}.pkl')
+#     if not state_file.exists():
+#         raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
 
-        # Обновляем состояние только если новое впереди текущего
-        if (new_state.get('page', 0) > current_state.get('page', 0) or
-            new_state.get('pages', 0) > current_state.get('pages', 0)):
-            with open(file_path, 'wb') as f:
-                pickle.dump(new_state, f)
+#     # Считаем текущее состояние из файла, если есть
+#     try:
+#         with open(state_file, 'rb') as f:
+#             current_state = pickle.load(f)
+#     except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+#         current_state = {'page': 0, 'pages': 0}
+
+#     # Обновляем состояние только если новое впереди текущего
+#     if (new_state.get('page', 0) > current_state.get('page', 0) or
+#         new_state.get('pages', 0) > current_state.get('pages', 0)):
+#         with open(state_file, 'wb') as f:
+#             pickle.dump(new_state, f)
+
+def set_state(id: str, new_state: dict):
+    state_file = os.path.join(FILE_PATH, f'{id}.pkl')
+    lock_file = os.path.join(FILE_PATH, f'{id}.lock')
+
+    with open(lock_file, "w") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
+        try:
+            # Загружаем текущее состояние (если файл существует)
+            if state_file.exists():
+                try:
+                    with open(state_file, "rb") as f:
+                        current_state = pickle.load(f)
+                except (EOFError, pickle.UnpicklingError):
+                    current_state = {"page": 0, "pages": 0}
+            else:
+                current_state = {"page": 0, "pages": 0}
+
+            # Обновляем только если новое состояние "вперёд"
+            if (new_state.get("page", 0) > current_state.get("page", 0) or
+                new_state.get("pages", 0) > current_state.get("pages", 0)):
+                with open(state_file, "wb") as f:
+                    pickle.dump(new_state, f)
+        finally:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)  # снимаем блокировку
 
 def get_state(id):
-    with app.lock:
-        with open(os.path.join(app.file_path, f'{id}.pkl'), 'rb') as f:
-            state = pickle.load(f)
-    return state
-
+    state_file = os.path.join(FILE_PATH, f'{id}.pkl')
+    if not state_file.exists():
+        raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
+    with open(state_file, "rb") as f:
+        return pickle.load(f)
 
 def get_file_name(fn, files):
 
