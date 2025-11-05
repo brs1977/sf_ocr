@@ -106,7 +106,8 @@ def set_state(id: str, new_state: dict):
                 current_state = {"page": 0, "pages": 0}
 
             # Обновляем только если новое состояние "вперёд"
-            if (new_state.get("page", 0) > current_state.get("page", 0) or
+            if (not os.path.exists(state_file) or 
+                new_state.get("page", 0) > current_state.get("page", 0) or
                 new_state.get("pages", 0) > current_state.get("pages", 0)):
                 with open(state_file, "wb") as f:
                     pickle.dump(new_state, f)
