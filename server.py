@@ -96,7 +96,7 @@ def set_state(id: str, new_state: dict):
         fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
         try:
             # Загружаем текущее состояние (если файл существует)
-            if not os.path.exists(state_file):
+            if os.path.exists(state_file):
                 try:
                     with open(state_file, "rb") as f:
                         current_state = pickle.load(f)
