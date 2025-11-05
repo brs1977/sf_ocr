@@ -1,7 +1,7 @@
 import os
 import sys
 import fcntl
-import Path
+from pathlib import Path
 import threading
 from concurrent.futures.process import ProcessPoolExecutor
 from http import HTTPStatus
