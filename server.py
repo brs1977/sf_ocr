@@ -91,6 +91,7 @@ def del_state(id):
 def set_state(id: str, new_state: dict):
     state_file = os.path.join(FILE_PATH, f'{id}.pkl')
     lock_file = os.path.join(FILE_PATH, f'{id}.lock')
+    logger.debug([id, new_state])
 
     with open(lock_file, "w") as lf:
         fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
@@ -205,7 +206,9 @@ def do_work(id):
 
 async def run_in_process(fn, *args):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(app.state.executor, fn, *args)
+    state = await loop.run_in_executor(app.state.executor, fn, *args)
+    logger.debug([run_in_process, state])
+    set_state(id, state)
 
 
 async def cpu_bound_task(id: str) -> None:
@@ -224,8 +227,7 @@ async def ocr(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     out_file_name = f"output/{id}.pdf"
     async with aiofiles.open(out_file_name, 'wb') as out_file:
         content = await file.read()  # async read
-        state = await out_file.write(content)  # async write
-        set_state(id, state)
+        await out_file.write(content)  # async write
 
     background_tasks.add_task(cpu_bound_task, id)
     return JSONResponse({"id": id})
