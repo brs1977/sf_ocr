@@ -154,6 +154,7 @@ def do_work(id):
         for page, pages, info in splitter.process():            
             results.append(info)
             state = {'page': page, 'pages': pages}
+            logger.debug(state)
             set_state(id, state)
 
         state['results'] = results
