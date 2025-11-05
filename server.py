@@ -50,8 +50,8 @@ app.orient_clf = load_model('models/orient.pkl')
 app.type_clf = load_model('models/type.pkl')
 
 
-# app.lock = Lock()
-app.lock = threading.Lock()
+app.lock = Lock()
+# app.lock = threading.Lock()
 
 def del_state(id):
     with app.lock:
