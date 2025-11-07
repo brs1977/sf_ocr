@@ -14,8 +14,17 @@ from img_utils import to_gray, resize, correct_skew3
 import string
 import random
 
+
 INDEX_PATTERN   = re.compile('_(\d*)')
-MIN_IMAGE_SIZE  = 600 * 400
+MIN_IMAGE_SIZE  = 600 * 450
+
+def pdf_page_image_gen_single(pdf_path, page_index):
+    with fitz.open(pdf_path) as doc:
+        page = doc[page_index]
+        pix = page.get_pixmap(dpi=150)
+        img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
+        yield img
+
 
 def temp_file_name():
     return next(tempfile._get_candidate_names())
@@ -41,6 +50,7 @@ def is_text_page(page):
         return True
 
     image = max_page_image(page)
+    logger.debug(("Image size:", image['width'] * image['height'], "min image size", MIN_IMAGE_SIZE))
     if image['width'] * image['height'] < MIN_IMAGE_SIZE:
         logger.debug('Text pdf page')  
         return True    
@@ -244,35 +254,25 @@ class PDFSplitter:
         info['files'] = files
         return info
 
-    def process_image_pdf(self, pages_range):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            results = []
-            imgs = []
-            is_first = True
-            for image, page, pages in pdf_page_image_gen(self.pdf_file, pages_range):                
-                typ, img = self.preprocess_image(image)
-                logger.debug(('page:',page,'type:',typ))                
+    def _process_image_pdf(self, pages_range, tmp_dir):
+        imgs = []
+        is_first = True
+        for image, page, pages in pdf_page_image_gen(self.pdf_file, pages_range):                
+            typ, img = self.preprocess_image(image)
 
-                if typ == 1 and not is_first:
-                    info = self.pdf_create_file(tmp_dir, imgs)
-                    print(('page:',page,'type:',typ, info))
-                    results.append(info)
-                    imgs = []
-                    yield page, pages, info
+            if typ == 1 and not is_first:
+                info = self.pdf_create_file(tmp_dir, imgs)
+                logger.debug(('page:',page,'pages',pages,'type:',typ, info))
+                imgs = []
+                yield page, pages, info
 
-                imgs.append(img)
-                is_first = False
+            imgs.append(img)
+            is_first = False
 
-            info = self.pdf_create_file(tmp_dir, imgs)
-            print(('page:',page,'type:',typ, info))
-            results.append(info)
-
-            with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
-                json_file.write(json.dumps(results))
-
-            # zip
-            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
-            yield page, pages, info
+        info = self.pdf_create_file(tmp_dir, imgs)
+        
+        logger.debug(('page:',page,'pages',pages,'type:',typ, info))
+        yield page, pages, info
 
     def is_first_page(self, text):
         # тест 1 страницы документа, со словами инн/кпп и фактура
@@ -280,72 +280,50 @@ class PDFSplitter:
         return self.extractor.config.PATTERN_INN_KPP.search(text) and  self.extractor.config.PATTERN_SF_NUM.search(text)
             
 
-    def process_text_pdf(self, pages_range):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            results = []
-            info = None
-            with fitz.open(self.pdf_file) as pdf_file:
-                page_no = 1
-                pages = len(pdf_file)
-                for page_index in pages_range:
+    def _process_text_pdf(self, pages_range, tmp_dir):
+        info = None
+        with fitz.open(self.pdf_file) as pdf_file:
+            page_no = 1
+            pages = len(pdf_file)
+            for page_index in pages_range:
+                
+                text = pdf_page_text(pdf_file[page_index])                    
+                
+                
+                if self.is_first_page(text):
+                    if info: 
+                        logger.debug(('page:',page_index+1,'pages',pages, info))
+                        yield page_index+1, pages, info
+
+                    page_no = 1
+                    current_file_name =  temp_file_name()  
+
+                    info = self.extractor.extract_sf_data(text)
+                    try:
+                        if not info['buyer_inn'] and not info['seller_inn']:                            
+                            info = self.extractor.extract_sf_data_from_text_pdf(text)
+                    except Exception as e:
+                        logger.debug(e)
                     
-                    text = pdf_page_text(pdf_file[page_index])                    
-                    
-                    
-                    if self.is_first_page(text):
-                        if info: 
-                            yield page_index+1, pages, info
+                    info['files'] = []                        
 
-                        page_no = 1
-                        current_file_name =  temp_file_name()  
+                fn = f'{current_file_name}-{page_no}.pdf'
+                info['files'].append(fn)
+                logger.debug(('page:',page_index+1,'pages',pages, info))
+                fn = os.path.join(tmp_dir, fn)
+                pdf_create_page_file(fn, pdf_file, page_index)
+                page_no += 1
 
-                        info = self.extractor.extract_sf_data(text)
-                        try:
-                            if not info['buyer_inn'] and not info['seller_inn']:                            
-                                info = self.extractor.extract_sf_data_from_text_pdf(text)
-                        except Exception as e:
-                            logger.debug(e)
-                        
-                        info['files'] = []                        
 
-                    # Добавляем текущую страницу к текущему документу
-                    if info is not None:  # на случай, если первая страница ещё не найдена
-                        fn = f'{current_file_name}-{page_no}.pdf'
-                        info['files'].append(fn)
-                        results.append(info.copy())  # если нужно сохранять все состояния
-
-                        # Сохраняем страницу в файл
-                        full_path = os.path.join(tmp_dir, fn)
-                        pdf_create_page_file(full_path, pdf_file, page_index)
-                        page_no += 1
-
-                    # fn = f'{file_name}-{page_no}.pdf'
-                    # info['files'].append(fn)
-                    # logger.debug(info)
-                    # results.append(info)
-                    # fn = os.path.join(tmp_dir, fn)
-                    # pdf_create_page_file(fn, pdf_file, page_index)
-                    # page_no += 1
-
-                if info is not None:
-                    # Последняя страница — это последний элемент в pages_range
-                    last_page_index = pages_range[-1] if pages_range else 0
-                    yield last_page_index + 1, pages, info
-
-            with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
-                json_file.write(json.dumps(results))
-
-            # zip
-            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)        
+        last_page_index = pages_range[-1] if pages_range else 0
+        yield last_page_index, pages, info
 
     def process(self):
-
-
         with fitz.open(self.pdf_file) as pdf_file:
             if not pdf_file.is_pdf:
                 raise ValueError('File is not pdf') 
             if pdf_file.page_count == 0:
-                raise ValueError('Pdf has not pages') 
+                raise ValueError('Pdf has no pages') 
 
             text_pages_range = []
             image_pages_range = []
@@ -355,22 +333,22 @@ class PDFSplitter:
                 else:
                     image_pages_range.append(page_index)
 
-        # print(len(text_pages_range), text_pages_range)
-        # print(len(image_pages_range), image_pages_range)
-        if text_pages_range:
-            for x in self.process_text_pdf(text_pages_range):
-                yield x
-        if image_pages_range:
-            for x in self.process_image_pdf(image_pages_range):
-                yield x
+            logger.debug(("page_count",pdf_file.page_count,"text_pages_range",text_pages_range,"image_pages_range",image_pages_range))
 
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            all_results = []
 
-        # if pdf_is_text(self.pdf_file):
-        #     for x in self.process_text_pdf(text_pages_range):
-        #         yield x
-        # else:
-        #     for x in self.process_image_pdf(image_pages_range):
-        #         yield x
+            if text_pages_range:
+                for x in self._process_text_pdf(text_pages_range, tmp_dir):
+                    all_results.append(x[2])  # x = (page, pages, info)
+                    yield x
 
+            if image_pages_range:
+                for x in self._process_image_pdf(image_pages_range, tmp_dir):
+                    all_results.append(x[2])
+                    yield x
 
-            
+            with open(os.path.join(tmp_dir, 'results.json'), 'w', encoding='utf-8') as f:
+                json.dump(all_results, f, ensure_ascii=False)
+
+            shutil.make_archive(self.out_file_name, 'zip', tmp_dir)
