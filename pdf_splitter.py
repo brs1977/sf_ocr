@@ -286,20 +286,18 @@ class PDFSplitter:
             info = None
             with fitz.open(self.pdf_file) as pdf_file:
                 page_no = 1
-                # pages = len(pdf_file)
-                pages = len(pages_range)
-                for idx, page_index in enumerate(pages_range):
+                pages = len(pdf_file)
+                for page_index in pages_range:
                     
                     text = pdf_page_text(pdf_file[page_index])                    
                     
                     
-                    if self.is_first_page(text):                        
+                    if self.is_first_page(text):
                         if info: 
-                            logger.debug(["process_text_pdf", idx+1, pages])
-                            yield idx+1, pages, info
+                            yield page_index+1, pages, info
 
                         page_no = 1
-                        file_name = temp_file_name()  
+                        current_file_name =  temp_file_name()  
 
                         info = self.extractor.extract_sf_data(text)
                         try:
@@ -310,16 +308,29 @@ class PDFSplitter:
                         
                         info['files'] = []                        
 
+                    # Добавляем текущую страницу к текущему документу
+                    if info is not None:  # на случай, если первая страница ещё не найдена
+                        fn = f'{current_file_name}-{page_no}.pdf'
+                        info['files'].append(fn)
+                        results.append(info.copy())  # если нужно сохранять все состояния
 
-                    fn = f'{file_name}-{page_no}.pdf'
-                    info['files'].append(fn)
-                    logger.debug(info)
-                    yield idx+1, pages, info
-                    results.append(info)
-                    fn = os.path.join(tmp_dir, fn)
-                    pdf_create_page_file(fn, pdf_file, page_index)
-                    page_no += 1
+                        # Сохраняем страницу в файл
+                        full_path = os.path.join(tmp_dir, fn)
+                        pdf_create_page_file(full_path, pdf_file, page_index)
+                        page_no += 1
 
+                    # fn = f'{file_name}-{page_no}.pdf'
+                    # info['files'].append(fn)
+                    # logger.debug(info)
+                    # results.append(info)
+                    # fn = os.path.join(tmp_dir, fn)
+                    # pdf_create_page_file(fn, pdf_file, page_index)
+                    # page_no += 1
+
+                if info is not None:
+                    # Последняя страница — это последний элемент в pages_range
+                    last_page_index = pages_range[-1] if pages_range else 0
+                    yield last_page_index + 1, pages, info
 
             with open(os.path.join(tmp_dir, 'results.json'), 'w') as json_file:
                 json_file.write(json.dumps(results))

@@ -1,7 +1,8 @@
 import os
 import sys
-import fcntl
-from pathlib import Path
+
+from lock import lock_file, unlock_file
+
 import threading
 from concurrent.futures.process import ProcessPoolExecutor
 from http import HTTPStatus
@@ -24,7 +25,7 @@ import json
 import pickle
 import re
 
-
+from pathlib import Path
 import aiofiles
 from fastapi import (BackgroundTasks, FastAPI, File, HTTPException, Request,
                      UploadFile)
@@ -45,56 +46,93 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
-app.file_path = 'output'
-FILE_PATH = Path("output").resolve() 
 config = Config('models/config.yaml')
-app.extractor = SfInfoExtractor(config)
-app.orient_clf = load_model('models/orient.pkl')
-app.type_clf = load_model('models/type.pkl')
+OUTPUT_DIR = Path("output").resolve()
+OUTPUT_DIR.mkdir(exist_ok=True)
+ORIENT_CLF = load_model('models/orient.pkl')
+TYPE_CLF = load_model('models/type.pkl')
+EXTRACTOR = SfInfoExtractor(config)
+
+
+# app.file_path = 'output'
+# app.extractor = SfInfoExtractor(config)
+# app.orient_clf = load_model('models/orient.pkl')
+# app.type_clf = load_model('models/type.pkl')
 
 
 # app.lock = Lock()
 # app.lock = threading.Lock()
 
-def del_state(_id):
-    state_file = os.path.join(FILE_PATH, f'{_id}.pkl')
-    if not os.path.exists(state_file):
-        raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
-    
-    os.remove(state_file)
+# def del_state(_id):
+#     with app.lock:
+#         os.remove(os.path.join(app.file_path, f'{_id}.pkl'))
 
-def set_state(_id: str, new_state: dict):
-    state_file = os.path.join(FILE_PATH, f'{_id}.pkl')
-    lock_file = os.path.join(FILE_PATH, f'{_id}.lock')
-    logger.debug(["set_state", _id, new_state])
+# def set_state(id, state):
+#     with app.lock:
+#         with open(os.path.join(app.file_path, f'{id}.pkl'), 'wb') as f:
+#             pickle.dump(state, f)
 
-    with open(lock_file, "w") as lf:
-        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)  # эксклюзивная блокировка
+# def set_state(_id, new_state):
+#     with app.lock:
+#         file_path = os.path.join(app.file_path, f'{_id}.pkl')
+#         # Считаем текущее состояние из файла, если есть
+#         try:
+#             with open(file_path, 'rb') as f:
+#                 current_state = pickle.load(f)
+#         except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+#             current_state = {'page': 0, 'pages': 0}
+
+#         # Обновляем состояние только если новое впереди текущего
+#         if (new_state.get('page', 0) > current_state.get('page', 0) or
+#             new_state.get('pages', 0) > current_state.get('pages', 0)):
+#             with open(file_path, 'wb') as f:
+#                 pickle.dump(new_state, f)
+
+# def get_state(_id):
+#     with app.lock:
+#         with open(os.path.join(app.file_path, f'{_id}.pkl'), 'rb') as f:
+#             state = pickle.load(f)
+#     return state
+
+
+
+
+def set_state(_id, new_state):
+    file_path = OUTPUT_DIR / f"{_id}.pkl"
+    lock_path = OUTPUT_DIR / f"{_id}.lock"
+
+    with open(lock_path, "w") as locking_file:
+        lock_file(locking_file)
         try:
-            # Загружаем текущее состояние (если файл существует)
-            if os.path.exists(state_file):
+            # Загружаем текущее состояние
+            if file_path.exists():
                 try:
-                    with open(state_file, "rb") as f:
+                    with open(file_path, "rb") as f:
                         current_state = pickle.load(f)
                 except (EOFError, pickle.UnpicklingError):
                     current_state = {"page": 0, "pages": 0}
             else:
                 current_state = {"page": 0, "pages": 0}
 
-            # Обновляем только если новое состояние "вперёд"
-            if (not os.path.exists(state_file) or 
-                new_state.get("page", 0) > current_state.get("page", 0) or
-                new_state.get("pages", 0) > current_state.get("pages", 0)):
-                with open(state_file, "wb") as f:
+            # для финального состояния (с results) — всегда сохраняем!
+            if 'results' in new_state or 'detail' in new_state:
+                with open(file_path, "wb") as f:
                     pickle.dump(new_state, f)
+            else:
+                # Промежуточное — только если вперёд
+                if (not file_path.exists() or
+                    new_state.get('page', 0) > current_state.get('page', 0) or
+                    new_state.get('pages', 0) > current_state.get('pages', 0)):
+                    with open(file_path, "wb") as f:
+                        pickle.dump(new_state, f)
         finally:
-            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)  # снимаем блокировку
+            unlock_file(locking_file)
 
 def get_state(_id):
-    state_file = os.path.join(FILE_PATH, f'{_id}.pkl')
-    if not os.path.exists(state_file):
-        raise FileNotFoundError(f"Файл состояния не найден: {state_file}")
-    with open(state_file, "rb") as f:
+    file_path = OUTPUT_DIR / f"{_id}.pkl"
+    if not file_path.exists():
+        return {"page": 0, "pages": 0}
+    with open(file_path, "rb") as f:
         return pickle.load(f)
 
 def get_file_name(fn, files):
@@ -120,36 +158,104 @@ def get_file_name(fn, files):
 def do_work(_id):
     try:
         results = []
-        pdf_file_name = os.path.join(app.file_path, f'{_id}.pdf')
-        zip_file_name = os.path.join(app.file_path, f'{_id}')
+        pdf_file = OUTPUT_DIR / f"{_id}.pdf"
+        zip_dir = OUTPUT_DIR / f"{_id}"
 
-        splitter = PDFSplitter(zip_file_name, pdf_file_name,
-                               app.orient_clf, app.type_clf, app.extractor)
-
-        state = get_state(_id)
-        for page, pages, info in splitter.process():            
+        splitter = PDFSplitter(
+            str(zip_dir),
+            str(pdf_file),
+            ORIENT_CLF,
+            TYPE_CLF,
+            EXTRACTOR
+        )
+        
+        page = pages = 0
+        for page, pages, info in splitter.process():
             results.append(info)
-            state = {'page': page, 'pages': pages}
-            logger.debug(state)
-            set_state(_id, state)
+            set_state(_id, {"page": page, "pages": pages})
 
-        state['results'] = results
-        state['url'] = f'result/{_id}'
+        final_state = {
+            "page": pages,
+            "pages": pages,
+            "results": results,
+            "url": f"result/{_id}"
+        }
+        set_state(_id, final_state)
+        return final_state
 
     except Exception as e:
         logger.exception(e)
-        state = {'detail': str(e)}
-    return state
+        return {"detail": str(e)}
+
+# def do_work(_id):
+#     try:
+#         results = []
+#         pdf_file_name = os.path.join(app.file_path, f'{_id}.pdf')
+#         zip_file_name = os.path.join(app.file_path, f'{_id}')
+
+#         splitter = PDFSplitter(zip_file_name, pdf_file_name,
+#                                app.orient_clf, app.type_clf, app.extractor)
+
+#         state = get_state(_id)
+#         for page, pages, info in splitter.process():            
+#             results.append(info)
+#             state = {'page': page, 'pages': pages}
+#             set_state(_id, state)
+
+#         state['results'] = results
+#         state['url'] = f'result/{_id}'
+
+#     except Exception as e:
+#         logger.exception(e)
+#         state = {'detail': str(e)}
+#     return state
+
+
+# def do_work(id):
+#     try:
+#         files = {}
+#         results = []
+#         pdf_file_name = os.path.join(app.file_path,f'{id}.pdf')
+#         zip_file_name = os.path.join(app.file_path,f'{id}.zip')
+#         with BytesIO() as archive:
+#             with ZipFile(archive, 'w') as zip_archive:
+
+#                 for page,pages,info,pdf in split_pdf_gen(pdf_file_name,app.orient_clf,app.type_clf,app.extractor):
+#                     file_name = get_file_name(info['sf_no'], files)
+#                     files[file_name] = file_name
+
+#                     with zip_archive.open(file_name+'.pdf', 'w') as pdf_file:
+#                         pdf_file.write(pdf.tobytes(garbage=4, deflate=True))
+
+
+#                     with zip_archive.open(file_name+'.json', 'w') as json_file:
+#                         json_file.write(bytes(json.dumps(info),'utf-8'))
+#                         # json.dump(info, json_file)
+#                     res = {'json':file_name+'.json', 'file': file_name+'.pdf', 'data': info, 'raw_data': info}
+#                     results.append(res)
+
+#                     state = {'page':page,'pages':pages}
+#                     set_state(id,state)
+
+#             with open(zip_file_name, 'wb') as f:
+#                 f.write(archive.getbuffer())
+#         state['results'] = results
+#         state['url'] = f'result/{id}.zip'
+
+#     except Exception as e:
+#         logger.exception(e)
+#         state = {'detail':str(e)}
+#     return state
+
 
 async def run_in_process(fn, *args):
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(app.state.executor, fn, *args)
-    
+    return await loop.run_in_executor(app.state.executor, fn, *args)
 
 
-async def cpu_bound_task(_id: str) -> None:
-    state = await run_in_process(do_work, _id)
-    set_state(_id, state)
+async def cpu_bound_task(id: str) -> None:
+    state = await run_in_process(do_work, id)
+    set_state(id, state)
 
 
 @app.post("/ocr", status_code=HTTPStatus.ACCEPTED)
@@ -169,25 +275,28 @@ async def ocr(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     return JSONResponse({"id": _id})
 
 
-@app.get('/progress/{_id}')
-def status(_id):
+@app.get('/progress/{id}')
+def status(id):
     try:
-        state = get_state(_id)
+        state = get_state(id)
         return state
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get('/result/{_id}')
-def result(_id):
+@app.get('/result/{id}')
+def result(id):
     try:
         #TODO state c ошибкой в нем нет page
-        state = get_state(_id)
+        state = get_state(id)
         if (state['page'] == 0 or state['page'] != state['pages']):
             raise HTTPException(status_code=404)
 
-        return FileResponse(path=os.path.join(app.file_path, f'{_id}.zip'), media_type='application/zip')
+        # del_state(id)
+        # os.remove(os.path.join(app.file_path, f'{id}.pdf'))
+
+        return FileResponse(path=os.path.join(app.file_path, f'{id}.zip'), media_type='application/zip')
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail=str(e))
