@@ -295,8 +295,7 @@ class PDFSplitter:
                         logger.debug(('page:',page_index+1,'pages',pages, info))
                         yield page_index+1, pages, info
 
-                    page_no = 1
-                    current_file_name =  temp_file_name()  
+                    page_no = 1                    
 
                     info = self.extractor.extract_sf_data(text)
                     try:
@@ -306,8 +305,12 @@ class PDFSplitter:
                         logger.debug(e)
                     
                     info['files'] = []                        
-
+                
+                current_file_name =  temp_file_name()  
                 fn = f'{current_file_name}-{page_no}.pdf'
+                if not info:
+                    info = self.extractor.extract_sf_data(text)
+                    info['files'] = []                        
                 info['files'].append(fn)
                 logger.debug(('page:',page_index+1,'pages',pages, info))
                 fn = os.path.join(tmp_dir, fn)
