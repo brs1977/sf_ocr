@@ -97,6 +97,45 @@ EXTRACTOR = SfInfoExtractor(config)
 
 
 
+# def set_state(_id, new_state):
+#     file_path = OUTPUT_DIR / f"{_id}.pkl"
+#     lock_path = OUTPUT_DIR / f"{_id}.lock"
+
+#     with open(lock_path, "w") as locking_file:
+#         lock_file(locking_file)
+#         try:
+#             # Загружаем текущее состояние
+#             if file_path.exists():
+#                 try:
+#                     with open(file_path, "rb") as f:
+#                         current_state = pickle.load(f)
+#                 except (EOFError, pickle.UnpicklingError):
+#                     current_state = {"page": 0, "pages": 0}
+#             else:
+#                 current_state = {"page": 0, "pages": 0}
+
+#             # для финального состояния (с results) — всегда сохраняем!
+#             if 'results' in new_state or 'detail' in new_state:
+#                 with open(file_path, "wb") as f:
+#                     pickle.dump(new_state, f)
+#             else:
+#                 # Промежуточное — только если вперёд
+#                 if (not file_path.exists() or
+#                     new_state.get('page', 0) > current_state.get('page', 0) or
+#                     new_state.get('pages', 0) > current_state.get('pages', 0)):
+#                     with open(file_path, "wb") as f:
+#                         pickle.dump(new_state, f)
+#         finally:
+#             unlock_file(locking_file)
+
+# def get_state(_id):
+#     file_path = OUTPUT_DIR / f"{_id}.pkl"
+#     if not file_path.exists():
+#         return {"page": 0, "pages": 0}
+#     with open(file_path, "rb") as f:
+#         return pickle.load(f)
+
+
 def set_state(_id, new_state):
     file_path = OUTPUT_DIR / f"{_id}.pkl"
     lock_path = OUTPUT_DIR / f"{_id}.lock"
@@ -104,25 +143,28 @@ def set_state(_id, new_state):
     with open(lock_path, "w") as locking_file:
         lock_file(locking_file)
         try:
-            # Загружаем текущее состояние
+            # Загружаем текущее состояние с обработкой ошибок
+            current_state = {"page": 0, "pages": 0}
             if file_path.exists():
                 try:
                     with open(file_path, "rb") as f:
-                        current_state = pickle.load(f)
-                except (EOFError, pickle.UnpicklingError):
+                        file_content = f.read()
+                        if file_content:  # Проверяем, что файл не пустой
+                            current_state = pickle.loads(file_content)
+                except (EOFError, pickle.UnpicklingError, Exception):
+                    # В случае любой ошибки чтения используем состояние по умолчанию
                     current_state = {"page": 0, "pages": 0}
-            else:
-                current_state = {"page": 0, "pages": 0}
 
-            # для финального состояния (с results) — всегда сохраняем!
+            # Всегда сохраняем финальные состояния
             if 'results' in new_state or 'detail' in new_state:
                 with open(file_path, "wb") as f:
                     pickle.dump(new_state, f)
             else:
-                # Промежуточное — только если вперёд
+                # Промежуточное состояние - только если прогресс
                 if (not file_path.exists() or
                     new_state.get('page', 0) > current_state.get('page', 0) or
                     new_state.get('pages', 0) > current_state.get('pages', 0)):
+                    
                     with open(file_path, "wb") as f:
                         pickle.dump(new_state, f)
         finally:
@@ -132,8 +174,17 @@ def get_state(_id):
     file_path = OUTPUT_DIR / f"{_id}.pkl"
     if not file_path.exists():
         return {"page": 0, "pages": 0}
-    with open(file_path, "rb") as f:
-        return pickle.load(f)
+    
+    try:
+        with open(file_path, "rb") as f:
+            file_content = f.read()
+            if not file_content:  # Файл пустой
+                return {"page": 0, "pages": 0}
+            return pickle.loads(file_content)
+    except (EOFError, pickle.UnpicklingError, Exception):
+        # В случае любой ошибки возвращаем состояние по умолчанию
+        return {"page": 0, "pages": 0}
+
 
 def get_file_name(fn, files):
 
@@ -295,8 +346,12 @@ def result(id):
 
         # del_state(id)
         # os.remove(os.path.join(app.file_path, f'{id}.pdf'))
+        zip_path = OUTPUT_DIR / f"{id}.zip"
 
-        return FileResponse(path=os.path.join(app.file_path, f'{id}.zip'), media_type='application/zip')
+        if not zip_path.exists():
+            raise HTTPException(status_code=404, detail="Результат ещё не готов или удалён")        
+
+        return FileResponse(path=zip_path, media_type='application/zip')
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail=str(e))
